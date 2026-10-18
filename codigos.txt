@@ -1,0 +1,51 @@
+# Codigos para probar cobertura. Tomados de productos reales del catalogo de tu otro proyecto.
+# Formato: codigo,etiqueta. Las lineas con # se ignoran.
+
+# ALIMENTOS (de pruebas anteriores; los 2 últimos vienen de una plantilla demo y podrían no ser reales)
+7790315000446,Agua mineral Villavicencio 500ml
+7790272001005,Aceite de girasol Natura 900ml
+7790070410122,Yerba mate 1kg (demo)
+7790040012226,Fideos tallarin 500g (demo)
+
+# HIGIENE PERSONAL
+7791293045856,Sedal crema de enjuague ceramidas 190ml
+7791293050843,Jabon Lux jazmin 120g
+7790990004098,Jabon Plusbelle flores rosas 120g
+7798339190051,Jabon Dettol 80g
+7791274193408,Jabon liquido Algabo citrus 300ml
+7790740000349,Acondicionador Plusbelle 1L
+7790250912811,Papel higienico Higienol texturado
+7790770602070,Toallitas femeninas Calipso x8
+7509546695457,Dentifrico Colgate 70g
+7891024136409,Enjuague Plax (ya probado: esta en Open Beauty Facts)
+7791520009729,Talco Veritas original 180g
+7790064000261,Algodon Estrella 75g
+7790139101428,Alcohol Bialcohol 70% 500ml
+7790139000493,Alcohol en gel Bialcohol 500ml
+
+# LIMPIEZA DEL HOGAR
+7791290794054,Detergente Cif bioactive limon 300ml
+7790990003039,Detergente Magistral 500ml
+7790520995285,Desinfectante Lysoform original
+7790520029522,Desodorante ambiente Glade frescura salvaje
+7793253004231,Desodorante ambiente Poett lavanda
+7790132072206,Destapacanerias Ayudin 1L
+7790520026187,Pastilla inodoro Pato citrus
+7791290795259,Jabon liquido Ala camellito doy pack
+7790520028709,Lustramuebles Ceramicol original
+7790520995384,Raid tabletas 5en1
+7797749109028,Bolsa residuos El Coloso 45x60
+7797749002985,Esponja bronce El Coloso x2
+7790520989956,Bolsa Ziploc conserva mediana
+77980755,Repelente de insectos Off crema 60g
+
+# VARIOS DE KIOSCO
+6902004095218,Encendedor Candela
+
+# ===== COMPLETAR VOS (faltan rubros clave del kiosco) =====
+# Tipea el numero que esta debajo del codigo de barras de cada producto, 5 a 8 por rubro:
+# GASEOSAS Y AGUAS:
+# GOLOSINAS, ALFAJORES, CHICLES:
+# GALLETITAS Y SNACKS:
+# CIGARRILLOS:
+# CERVEZAS, JUGOS, ENERGIZANTES:

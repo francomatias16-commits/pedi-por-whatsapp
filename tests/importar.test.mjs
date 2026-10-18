@@ -1,0 +1,42 @@
+// Prueba del parser de planillas: node tests/importar.test.mjs  (o: npm run test:importar)
+import ts from "typescript";
+import { readFileSync } from "node:fs";
+const cargar = (f) => ts.transpileModule(readFileSync(new URL(`../lib/${f}.ts`, import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
+const ean = cargar("ean");
+const imp = cargar("importar").replace('from "./ean"', `from "data:text/javascript;base64,${Buffer.from(ean).toString("base64")}"`);
+const { parsePrecio, parsePlanilla } = await import("data:text/javascript;base64," + Buffer.from(imp).toString("base64"));
+let fallos = 0;
+const eq = (n, a, b) => { if (JSON.stringify(a) !== JSON.stringify(b)) { fallos++; console.log("FALLA", n, JSON.stringify(a), "!=", JSON.stringify(b)); } };
+for (const [t, v] of [["2.485", 2485], ["2485,50", 2485.5], ["$ 1.250,5", 1250.5], ["12.5", 12.5], ["1,250.50", 1250.5], ["1.000.000", 1000000], ["abc", null], ["", null], ["-5", null], ["0", 0]]) eq(`precio ${t}`, parsePrecio(t), v);
+const txt = ["Nombre;Precio;Categoría;Código", "coca-cola 2,25 L;3.500;bebidas;7790895000782", "Alfajor  triple\t900\tGolosinas", "sin precio;abc", "x;100", "Coca-Cola 2,25 l;3600", "Chicles;350,5"].join("\r\n");
+const r = parsePlanilla(txt, new Set(["pan lactal"]), new Set());
+eq("filas", r.filas.map((f) => [f.nombre, f.precio, f.categoria]), [["Coca-cola 2,25 L", 3500, "Bebidas"], ["Alfajor triple", 900, "Golosinas"], ["Chicles", 350.5, "General"]]);
+eq("errores", r.errores.map((e) => e.linea), [4, 5]);
+eq("duplicados", r.duplicados, 1);
+eq("existente", parsePlanilla("Pan lactal;1000", new Set(["pan lactal"]), new Set()).duplicados, 1);
+const big = parsePlanilla(Array.from({ length: 600 }, (_, i) => `P${i} prod;${i + 1}`).join("\n"), new Set(), new Set());
+eq("tope filas", big.filas.length, 500);
+eq("tope aviso", big.errores.length, 1);
+// Stock y mínimo opcionales (columnas 5 y 6)
+const conStock = parsePlanilla("Coca;3500;Bebidas;;24;6\nAlfajor;900;Golosinas;;;\nPan;500;General;;abc\nQueso;800;General;;10", new Set(), new Set());
+eq("stock y mínimo se leen", [conStock.filas[0].stock, conStock.filas[0].minimo], [24, 6]);
+eq("sin stock queda null (no controla stock)", [conStock.filas[1].stock, conStock.filas[1].minimo], [null, null]);
+eq("stock inválido se reporta", conStock.errores.map((e) => e.linea), [3]);
+const minSinStock = parsePlanilla("Yerba;2000;Almacén;;;3", new Set(), new Set());
+eq("mínimo sin stock se rechaza", minSinStock.errores.length, 1);
+// Stock objetivo, días de entrega y proveedor (columnas 7, 8 y 9). Cada fila se arma con join para no contar separadores a mano.
+const fila = (...cols) => cols.join(";");
+const prov = new Set(["coca dist"]);
+const completo = parsePlanilla(fila("Coca", 3500, "Bebidas", "", 24, 6, 30, 4, "Coca Dist"), new Set(), new Set(), prov);
+eq("objetivo, días y proveedor se leen", [completo.filas[0].objetivo, completo.filas[0].dias, completo.filas[0].proveedorNombre], [30, 4, "Coca Dist"]);
+eq("proveedor inexistente se rechaza", parsePlanilla(fila("Yerba", 2000, "", "", 10, 2, 20, 3, "Fantasma"), new Set(), new Set(), prov).errores.map((e) => e.motivo.startsWith("no existe el proveedor")), [true]);
+eq("proveedor sin stock es válido", parsePlanilla(fila("Yerba", 2000, "", "", "", "", "", "", "Coca Dist"), new Set(), new Set(), prov).filas.length, 1);
+eq("objetivo sin stock se rechaza", parsePlanilla(fila("Yerba", 2000, "Almacén", "", "", "", 20), new Set(), new Set()).errores.length, 1);
+eq("objetivo menor al mínimo se rechaza", parsePlanilla(fila("Yerba", 2000, "Almacén", "", 10, 8, 5), new Set(), new Set()).errores.length, 1);
+eq("objetivo igual al mínimo es válido", parsePlanilla(fila("Yerba", 2000, "Almacén", "", 10, 8, 8), new Set(), new Set()).filas[0].objetivo, 8);
+eq("días fuera de rango se rechazan", parsePlanilla(fila("Yerba", 2000, "", "", "", "", "", 61), new Set(), new Set()).errores.length, 1);
+eq("días con texto se rechazan", parsePlanilla(fila("Yerba", 2000, "", "", "", "", "", "dos"), new Set(), new Set()).errores.length, 1);
+const solo = parsePlanilla(fila("Yerba", 2000), new Set(), new Set()).filas[0];
+eq("campos vacíos siguen siendo null", [solo.objetivo ?? null, solo.dias ?? null, solo.proveedorNombre ?? null], [null, null, null]);
+console.log(fallos ? `${fallos} fallos` : "importar: todo OK");
+process.exit(fallos ? 1 : 0);
