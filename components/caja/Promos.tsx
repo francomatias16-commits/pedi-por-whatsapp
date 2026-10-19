@@ -3,7 +3,8 @@ import { useConfirmar } from "@/components/ui/Confirmar";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase, type Kiosco } from "@/lib/supabase";
 import type { ProductoPos } from "@/lib/caja";
-import { PROMO_VACIA, describirPromo, filaPromo, formDePromo, validarPromo, vigenciaPromo, type FormPromo, type Promo } from "@/lib/pos/promos";
+import { mensajeErrorSql } from "@/lib/errores";
+import { PROMO_VACIA, describirPromo, filaPromo, formDePromo, interpretarErrorPromo, validarPromo, vigenciaPromo, type FormPromo, type Promo } from "@/lib/pos/promos";
 
 type Fila = Promo & { creada?: string };
 
@@ -38,16 +39,29 @@ export default function Promos({ kiosco, productos, promos, onCambio }: { kiosco
     if (e) return setErr(e);
     setOcupado(true); setErr("");
     const fila = filaPromo(form);
-    const { error } = editId
-      ? await supabase.from("pos_promos").update(fila).eq("id", editId).eq("kiosco_id", kiosco.id)
-      : await supabase.from("pos_promos").insert({ ...fila, kiosco_id: kiosco.id });
+    const escribir = (confirmado: boolean) => editId
+      ? supabase.from("pos_promos").update({ ...fila, margen_confirmado: confirmado }).eq("id", editId).eq("kiosco_id", kiosco.id)
+      : supabase.from("pos_promos").insert({ ...fila, kiosco_id: kiosco.id, margen_confirmado: confirmado });
+    let { error } = await escribir(false);
+    const e1 = interpretarErrorPromo(error);
+    if (e1.tipo === "margen") {
+      const sigue = await confirmar({ titulo: "Baja el margen", detalle: `Con esta promoción el producto queda con ${e1.margen}% de ganancia, por debajo del mínimo de ${e1.minimo}%. ¿Guardo igual?`, confirmar: "Sí, guardar igual", cancelar: "No, volver", peligro: true });
+      if (!sigue) { setOcupado(false); return; }
+      ({ error } = await escribir(true));
+    }
     setOcupado(false);
-    if (error) return setErr("No se pudo guardar la promoción. Revisá los datos e intentá de nuevo.");
+    if (error) return setErr(interpretarErrorPromo(error).tipo === "duplicada" ? mensajeErrorSql(error.message) : "No se pudo guardar la promoción. Revisá los datos e intentá de nuevo.");
     setForm(null); setEditId(null); await refrescar();
   }
   async function alternar(p: Fila) {
-    const { error } = await supabase.from("pos_promos").update({ activa: !p.activa }).eq("id", p.id).eq("kiosco_id", kiosco.id);
-    if (error) return setErr("No se pudo cambiar el estado de la promoción.");
+    let { error } = await supabase.from("pos_promos").update({ activa: !p.activa }).eq("id", p.id).eq("kiosco_id", kiosco.id);
+    const e1 = interpretarErrorPromo(error);
+    if (e1.tipo === "margen") {
+      const sigue = await confirmar({ titulo: "Baja el margen", detalle: `Con esta promoción el producto queda con ${e1.margen}% de ganancia, por debajo del mínimo de ${e1.minimo}%. ¿La activo igual?`, confirmar: "Sí, activar igual", cancelar: "No, volver", peligro: true });
+      if (!sigue) return;
+      ({ error } = await supabase.from("pos_promos").update({ activa: true, margen_confirmado: true }).eq("id", p.id).eq("kiosco_id", kiosco.id));
+    }
+    if (error) return setErr(interpretarErrorPromo(error).tipo === "duplicada" ? mensajeErrorSql(error.message) : "No se pudo cambiar el estado de la promoción.");
     await refrescar();
   }
   async function borrar(p: Fila) {
@@ -61,7 +75,7 @@ export default function Promos({ kiosco, productos, promos, onCambio }: { kiosco
   return (
     <div>
       {ventanaConfirmar}
-      <p className="mut">Se aplican solas al cobrar. Si un producto entra en más de una, gana la que más le conviene al cliente (no se suman). El NxM no aplica a productos por peso.</p>
+      <p className="mut">Se aplican solas al cobrar y cada producto puede tener una sola promoción a la vez. El NxM no aplica a productos por peso.</p>
       {err && <p className="pos-error" role="alert">{err}</p>}
       {!form && <button onClick={() => { setForm({ ...PROMO_VACIA }); setEditId(null); setErr(""); }}>Nueva promoción</button>}
       {form && (

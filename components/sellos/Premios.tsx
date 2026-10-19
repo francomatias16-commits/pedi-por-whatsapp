@@ -3,13 +3,15 @@ import { useConfirmar } from "@/components/ui/Confirmar";
 import { useState } from "react";
 import { supabase, type Kiosco } from "@/lib/supabase";
 import type { ProductoSello } from "../Sellos";
-import { PREMIO_VACIO, TIPOS_PREMIO, describirPremio, formDesdePremio, mensajeFidelidad, premioDesdeForm, validarPremio, type FormPremio, type Premio } from "@/lib/fidelidad";
+import { PREMIO_VACIO, TIPOS_PREMIO, describirPremio, formDesdePremio, mensajeFidelidad, premioDesdeForm, textoDeshacer, validarPremio, vistaPreviaPremio, type FormPremio, type Premio } from "@/lib/fidelidad";
+import { useDeshacer } from "./useDeshacer";
 
 export default function Premios({ kiosco, premios, productos, onCambio }: { kiosco: Kiosco; premios: Premio[]; productos: ProductoSello[]; onCambio: () => void }) {
   const [ventanaConfirmar, confirmar] = useConfirmar();
   const [form, setForm] = useState<(FormPremio & { id?: string }) | null>(null);
   const [msg, setMsg] = useState(""); const [ocupado, setOcupado] = useState(false);
   const set = <K extends keyof FormPremio>(k: K, v: FormPremio[K]) => setForm((f) => (f ? { ...f, [k]: v } : f));
+  const undo = useDeshacer(kiosco.id, onCambio);
   const nombreProd = (id: string | null) => productos.find((p) => p.id === id)?.nombre;
 
   async function guardar() {
@@ -18,21 +20,28 @@ export default function Premios({ kiosco, premios, productos, onCambio }: { kios
     if (err) return setMsg(err);
     setOcupado(true); setMsg("");
     const fila = premioDesdeForm(form);
-    const { error } = form.id
-      ? await supabase.from("fidelidad_premios").update(fila).eq("id", form.id).eq("kiosco_id", kiosco.id)
-      : await supabase.from("fidelidad_premios").insert({ ...fila, kiosco_id: kiosco.id });
+    const antes = form.id ? premios.find((x) => x.id === form.id) : undefined;
+    const r = form.id
+      ? await supabase.from("fidelidad_premios").update(fila).eq("id", form.id).eq("kiosco_id", kiosco.id).select("id").maybeSingle()
+      : await supabase.from("fidelidad_premios").insert({ ...fila, kiosco_id: kiosco.id }).select("id").single();
     setOcupado(false);
-    if (error) return setMsg(mensajeFidelidad(error.message));
+    if (r.error) return setMsg(mensajeFidelidad(r.error.message));
+    const id = (r.data as { id: string } | null)?.id ?? form.id;
+    if (id) undo.registrar(antes ? { tabla: "fidelidad_premios", modo: "editar", id, fila: antes as unknown as Record<string, unknown>, texto: textoDeshacer("editar", fila.nombre, antes, { activo: antes.activo }) } : { tabla: "fidelidad_premios", modo: "crear", id, fila: null, texto: textoDeshacer("crear", fila.nombre) });
     setForm(null); setMsg("Premio guardado"); onCambio();
   }
   async function activar(p: Premio) {
     const { error } = await supabase.from("fidelidad_premios").update({ activo: !p.activo }).eq("id", p.id).eq("kiosco_id", kiosco.id);
-    if (error) setMsg("No se pudo cambiar el estado."); else onCambio();
+    if (error) return setMsg("No se pudo cambiar el estado.");
+    undo.registrar({ tabla: "fidelidad_premios", modo: "editar", id: p.id, fila: p as unknown as Record<string, unknown>, texto: textoDeshacer("editar", p.nombre, p, { activo: !p.activo }) });
+    setMsg(""); onCambio();
   }
   async function borrar(p: Premio) {
     if (!await confirmar({ titulo: `¿Borrar el premio “${p.nombre}”? Los canjes ya hechos se conservan.`, confirmar: "Sí, seguir", peligro: true })) return;
     const { error } = await supabase.from("fidelidad_premios").delete().eq("id", p.id).eq("kiosco_id", kiosco.id);
-    if (error) setMsg("No se pudo borrar."); else { setMsg("Premio borrado."); onCambio(); }
+    if (error) return setMsg("No se pudo borrar.");
+    undo.registrar({ tabla: "fidelidad_premios", modo: "borrar", id: p.id, fila: p as unknown as Record<string, unknown>, texto: textoDeshacer("borrar", p.nombre) });
+    setMsg("Premio borrado."); onCambio();
   }
 
   return (
@@ -40,6 +49,12 @@ export default function Premios({ kiosco, premios, productos, onCambio }: { kios
       {ventanaConfirmar}
       <p className="mut">Podés tener varios premios con distinto costo: uno chico a los 5 puntos y uno grande a los 20. El cliente elige cuál canjear.</p>
       {msg && <p role="status" className="mut">{msg}</p>}
+      {undo.ultimo && (
+        <div className="row" role="status" style={{ justifyContent: "flex-start", gap: 8, flexWrap: "wrap" }}>
+          <span className="mut">{undo.ultimo.texto}</span>
+          <button className="sec" disabled={undo.ocupado} onClick={async () => { const e = await undo.deshacer(); setMsg(e ?? "Listo, volvió a como estaba."); }}>Deshacer</button>
+        </div>
+      )}
       {!form && <button onClick={() => { setMsg(""); setForm({ ...PREMIO_VACIO }); }}>Nuevo premio</button>}
       {form && (
         <div className="card">
@@ -64,6 +79,10 @@ export default function Premios({ kiosco, premios, productos, onCambio }: { kios
           {form.tipo === "pct" && <label>Tope en pesos (opcional)<input inputMode="decimal" value={form.tope ?? ""} onChange={(e) => set("tope", e.target.value)} placeholder="Sin tope" /></label>}
           {form.tipo === "monto" && <label>Monto de descuento ($)<input inputMode="decimal" value={form.valor} onChange={(e) => set("valor", e.target.value)} placeholder="500" /></label>}
           <label>Descripción (opcional)<input value={form.descripcion} maxLength={200} onChange={(e) => set("descripcion", e.target.value)} /></label>
+          <div className="fila-sep" aria-live="polite">
+            <b>Así lo verá el cliente</b>
+            <p>{vistaPreviaPremio(form, nombreProd(form.producto_id || null))}</p>
+          </div>
           <div className="row" style={{ justifyContent: "flex-start", gap: 6, marginTop: 8 }}>
             <button disabled={ocupado} onClick={guardar}>Guardar premio</button>
             <button className="sec" onClick={() => { setForm(null); setMsg(""); }}>Cancelar</button>

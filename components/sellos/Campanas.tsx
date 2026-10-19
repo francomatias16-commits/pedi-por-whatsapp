@@ -1,10 +1,11 @@
 "use client";
 import { useConfirmar } from "@/components/ui/Confirmar";
 import { useMemo, useState } from "react";
+import { useDeshacer } from "./useDeshacer";
 import { supabase, type Kiosco } from "@/lib/supabase";
 import type { ProductoSello } from "../Sellos";
 import {
-  CAMPANA_VACIA, DIAS, DIAS_CORTO, MEDIOS_ETQ, PLANTILLAS, TIPOS, campanaDesdeForm, describirCampana, formDesdeCampana, mensajeFidelidad, validarCampana,
+  CAMPANA_VACIA, DIAS, DIAS_CORTO, MEDIOS_ETQ, PLANTILLAS, TIPOS, campanaDesdeForm, describirCampana, formDesdeCampana, mensajeFidelidad, textoDeshacer, validarCampana, vistaPreviaCampana,
   type Campana, type Canal, type FormCampana, type Medio,
 } from "@/lib/fidelidad";
 
@@ -15,6 +16,7 @@ export default function Campanas({ kiosco, campanas, productos, onCambio }: { ki
   const [ventanaConfirmar, confirmar] = useConfirmar();
   const [form, setForm] = useState<(FormCampana & { id?: string }) | null>(null);
   const [msg, setMsg] = useState(""); const [ocupado, setOcupado] = useState(false);
+  const undo = useDeshacer(kiosco.id, onCambio);
   const categorias = useMemo(() => [...new Set(productos.map((p) => p.categoria))].sort(), [productos]);
   const nombreProd = (id: string | null) => productos.find((p) => p.id === id)?.nombre;
   const set = <K extends keyof FormCampana>(k: K, v: FormCampana[K]) => setForm((f) => (f ? { ...f, [k]: v } : f));
@@ -26,21 +28,28 @@ export default function Campanas({ kiosco, campanas, productos, onCambio }: { ki
     if (err) return setMsg(err);
     setOcupado(true); setMsg("");
     const fila = campanaDesdeForm(form);
-    const { error } = form.id
-      ? await supabase.from("fidelidad_campanas").update(fila).eq("id", form.id).eq("kiosco_id", kiosco.id)
-      : await supabase.from("fidelidad_campanas").insert({ ...fila, kiosco_id: kiosco.id });
+    const antes = form.id ? campanas.find((x) => x.id === form.id) : undefined;
+    const r = form.id
+      ? await supabase.from("fidelidad_campanas").update(fila).eq("id", form.id).eq("kiosco_id", kiosco.id).select("id").maybeSingle()
+      : await supabase.from("fidelidad_campanas").insert({ ...fila, kiosco_id: kiosco.id }).select("id").single();
     setOcupado(false);
-    if (error) return setMsg(mensajeFidelidad(error.message));
+    if (r.error) return setMsg(mensajeFidelidad(r.error.message));
+    const id = (r.data as { id: string } | null)?.id ?? form.id;
+    if (id) undo.registrar(antes ? { tabla: "fidelidad_campanas", modo: "editar", id, fila: antes as unknown as Record<string, unknown>, texto: textoDeshacer("editar", fila.nombre, { activo: antes.activa }, { activo: antes.activa }) } : { tabla: "fidelidad_campanas", modo: "crear", id, fila: null, texto: textoDeshacer("crear", fila.nombre) });
     setForm(null); setMsg("Forma de sumar puntos guardada"); onCambio();
   }
   async function activar(c: Campana) {
     const { error } = await supabase.from("fidelidad_campanas").update({ activa: !c.activa }).eq("id", c.id).eq("kiosco_id", kiosco.id);
-    if (error) setMsg("No se pudo cambiar el estado."); else onCambio();
+    if (error) return setMsg("No se pudo cambiar el estado.");
+    undo.registrar({ tabla: "fidelidad_campanas", modo: "editar", id: c.id, fila: c as unknown as Record<string, unknown>, texto: textoDeshacer("editar", c.nombre, { activo: c.activa }, { activo: !c.activa }) });
+    setMsg(""); onCambio();
   }
   async function borrar(c: Campana) {
     if (!await confirmar({ titulo: `¿Borrar la campaña “${c.nombre}”? Los sellos que ya dio se conservan.`, confirmar: "Sí, seguir", peligro: true })) return;
     const { error } = await supabase.from("fidelidad_campanas").delete().eq("id", c.id).eq("kiosco_id", kiosco.id);
-    if (error) setMsg("No se pudo borrar."); else { setMsg("Se borró la forma de sumar puntos."); onCambio(); }
+    if (error) return setMsg("No se pudo borrar.");
+    undo.registrar({ tabla: "fidelidad_campanas", modo: "borrar", id: c.id, fila: c as unknown as Record<string, unknown>, texto: textoDeshacer("borrar", c.nombre) });
+    setMsg("Se borró la forma de sumar puntos."); onCambio();
   }
 
   return (
@@ -48,6 +57,12 @@ export default function Campanas({ kiosco, campanas, productos, onCambio }: { ki
       {ventanaConfirmar}
       <p className="mut">Las campañas activas se <b>suman</b>: una compra puede ganar sellos por varias a la vez. Los “sellos dobles” multiplican lo que dan las demás.</p>
       {msg && <p role="status" className="mut">{msg}</p>}
+      {undo.ultimo && (
+        <div className="row" role="status" style={{ justifyContent: "flex-start", gap: 8, flexWrap: "wrap" }}>
+          <span className="mut">{undo.ultimo.texto}</span>
+          <button className="sec" disabled={undo.ocupado} onClick={async () => { const e = await undo.deshacer(); setMsg(e ?? "Listo, volvió a como estaba."); }}>Deshacer</button>
+        </div>
+      )}
       {!form && (
         <div className="card">
           <h3>Nueva forma de sumar puntos</h3>
@@ -118,6 +133,10 @@ export default function Campanas({ kiosco, campanas, productos, onCambio }: { ki
             <div><label>Empieza (opcional)</label><input type="date" value={form.desde} onChange={(e) => set("desde", e.target.value)} /></div>
             <div><label>Termina (opcional)</label><input type="date" value={form.hasta} onChange={(e) => set("hasta", e.target.value)} /></div>
             <div><label>Tope por cliente y día</label><input inputMode="numeric" value={form.tope_diario} placeholder="Sin tope" onChange={(e) => set("tope_diario", e.target.value)} /></div>
+          </div>
+          <div className="fila-sep" aria-live="polite">
+            <b>Así lo verá el cliente</b>
+            <p>{vistaPreviaCampana(form, nombreProd(form.producto_id || null))}</p>
           </div>
           <div className="row" style={{ justifyContent: "flex-start", gap: 6, marginTop: 8 }}>
             <button disabled={ocupado} onClick={guardar}>Guardar campaña</button>

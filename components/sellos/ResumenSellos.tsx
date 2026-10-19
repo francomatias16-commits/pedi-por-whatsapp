@@ -59,7 +59,7 @@ export default function ResumenSellos({ kiosco }: { kiosco: Kiosco }) {
       )}
       <div className="card">
         <h3>Vencimiento de puntos</h3>
-        <p className="mut">Si un cliente pasa tantos días sin sumar puntos, su saldo vence. Vacío = no vencen nunca. Los puntos no se borran: si se cambia o se quita el plazo, el saldo vuelve.</p>
+        <p className="mut">Los puntos vencen si el cliente pasa estos días sin sumar; dejalo vacío para que no venzan nunca.</p>
         <label>Días sin actividad (30 a 1095)<input inputMode="numeric" value={vence} placeholder="No vencen" onChange={(e) => setVence(e.target.value)} /></label>
         <button className="sec" onClick={guardarVencimiento}>Guardar</button>
       </div>

@@ -22,7 +22,7 @@ export default function ReporteEmpleados({ kiosco }: { kiosco: Kiosco }) {
   return (
     <div className="card">
       <h3>Sellos por empleado</h3>
-      <p className="mut" style={{ marginTop: 0 }}>Quién cargó cada sello y cada canje desde la caja y el panel. Los sellos del club y de los pedidos los suma el cliente y no figuran acá. Lo anterior a esta función aparece como “Sin registrar”.</p>
+      <p className="mut" style={{ marginTop: 0 }}>Quién cargó cada sello y cada canje desde la caja y el panel (los que suma el cliente solo no figuran).</p>
       <div className="row" style={{ justifyContent: "flex-start", gap: 6 }}>
         {[7, 30].map((n) => <button key={n} type="button" className={dias === n ? "" : "sec"} aria-pressed={dias === n} onClick={() => setDias(n)}>Últimos {n} días</button>)}
       </div>

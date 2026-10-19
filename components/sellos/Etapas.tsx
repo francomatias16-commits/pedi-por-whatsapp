@@ -75,7 +75,7 @@ export default function Etapas({ kiosco, onCambio }: { kiosco: Kiosco; onCambio:
     <div className="card">
       {ventana}
       <h3>Premios por etapas</h3>
-      <p className="mut">Cada nivel es un premio que se gana al juntar cierta cantidad de sellos. Por ejemplo: 5 sellos una gaseosa, 10 sellos un descuento, 20 sellos un combo. El cliente ve en su tarjeta el nivel que sigue.</p>
+      <p className="mut">Cada nivel es un premio con más sellos que el anterior, y el cliente ve el que sigue en su tarjeta. Ej: 5 una gaseosa, 10 un descuento.</p>
       {niveles.map((n, i) => (
         <div className="fila-sep" key={i}>
           <b>Nivel {i + 1}</b>
