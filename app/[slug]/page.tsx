@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const { data } = await cliente().from("kioscos").select("nombre,direccion").eq("slug", params.slug).maybeSingle();
   if (!data) return { title: "Local no encontrado" };
   const desc = `Hacé tu pedido a ${data.nombre} por WhatsApp${data.direccion ? ` · ${data.direccion}` : ""}`;
-  return { title: `${data.nombre} · Fluxo`, description: desc, openGraph: { title: data.nombre, description: desc, type: "website", locale: "es_AR" } };
+  return { title: `${data.nombre} · Go Fluxo`, description: desc, openGraph: { title: data.nombre, description: desc, type: "website", locale: "es_AR" } };
 }
 
 export default async function TiendaPage({ params }: { params: { slug: string } }) {

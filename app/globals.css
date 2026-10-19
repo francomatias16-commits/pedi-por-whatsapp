@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Fluxo — sistema visual "Góndola"
+   Go Fluxo — sistema visual "Góndola"
    Idea: el rotulado de un local de venta real. Cartel de precio, cinta de
    señalización, ticket térmico. Tinta casi negra, amarillo de etiqueta,
    gris hormigón. Titulares condensados de cartelería, cifras en mono.
@@ -632,3 +632,13 @@ button.pos-x { min-height: 36px; width: 36px; padding: 0; }
 .ingreso-mail label { display: block; margin: .6rem 0 0; font-weight: 600; }
 .ingreso-mail input { font-weight: 400; }
 
+
+/* Club de clientes: tarjeta pública y registro */
+.club { max-width: 480px; margin: 0 auto; padding: 16px; display: grid; gap: .75rem; }
+.club h1 { margin: 0; }
+.club-casilleros { list-style: none; margin: .5rem 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 8px; }
+.club-casilleros li { aspect-ratio: 1; display: grid; place-items: center; border: 2px solid var(--ink); border-radius: 50%; background: var(--surface); font-weight: 800; }
+.club-casilleros li.lleno { background: var(--signal); }
+.club-cuenta { font-size: 1.25rem; margin: 0; }
+.club-premio { background: var(--signal); }
+.club-premio p { margin: .25rem 0 0; }

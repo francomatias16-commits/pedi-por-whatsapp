@@ -72,6 +72,20 @@ eq("producto gratis: tope por lo que hay en el carrito", F.pctDePremio({ tipo: "
 eq("premio libre no descuenta", F.pctDePremio({ tipo: "libre", valor: null }, 4000), 0);
 eq("carrito vacío no descuenta", F.pctDePremio({ tipo: "pct", valor: 10 }, 0), 0);
 
+// Promo de horas flojas (atajo para una campaña multiplicador con días y horario)
+const HF = F.HORAS_FLOJAS_VACIA;
+eq("horas flojas: por defecto es válida", F.validarHorasFlojas(HF), null);
+eq("horas flojas: todos los presets son válidos", F.PRESETS_HORAS_FLOJAS.every((p) => F.validarHorasFlojas(p.form) === null), true);
+eq("horas flojas: sin días", F.validarHorasFlojas({ ...HF, dias: [] }), "Elegí al menos un día.");
+eq("horas flojas: desde = hasta", F.validarHorasFlojas({ ...HF, hasta: HF.desde }) !== null, true);
+eq("horas flojas: multiplicador 5 no es opción", F.validarHorasFlojas({ ...HF, mult: "5" }), "Elegí sellos dobles o triples.");
+eq("horas flojas: la campaña es un multiplicador con días y horario", (() => { const r = F.campanaDesdeForm(F.formCampanaHorasFlojas({ dias: [4, 2], desde: "15:00", hasta: "18:00", mult: "3" })); return [r.tipo, r.nombre, r.multiplicador, r.dias_semana, r.hora_desde, r.hora_hasta, r.canales]; })(), ["multiplicador", "Horas flojas", 3, [2, 4], "15:00", "18:00", ["pedido", "mostrador"]]);
+eq("horas flojas: se reconoce por tipo y nombre", [F.esHorasFlojas({ tipo: "multiplicador", nombre: "Horas flojas" }), F.esHorasFlojas({ tipo: "multiplicador", nombre: "Martes de sellos dobles" }), F.esHorasFlojas({ tipo: "visita", nombre: "Horas flojas" })], [true, false, false]);
+eq("horas flojas: ida y vuelta con la campaña guardada", F.horasFlojasDesdeCampana({ dias_semana: [2], hora_desde: "15:00:00", hora_hasta: "18:00:00", multiplicador: 2 }), { dias: [2], desde: "15:00", hasta: "18:00", mult: "2" });
+eq("horas flojas: sin días guardados = todos los días", F.horasFlojasDesdeCampana({ dias_semana: null, hora_desde: "10:00", hora_hasta: "12:00", multiplicador: 3 }).dias, [0, 1, 2, 3, 4, 5, 6]);
+eq("horas flojas: sin base de sellos no suma", F.hayBaseDeSellos([{ tipo: "multiplicador", activa: true }, { tipo: "visita", activa: false }]), false);
+eq("horas flojas: con una campaña por compra activa sí", F.hayBaseDeSellos([{ tipo: "visita", activa: true }]), true);
+
 eq("mensaje conocido", F.mensajeFidelidad("sellos_insuficientes"), "No alcanzan los sellos.");
 eq("mensaje desconocido", F.mensajeFidelidad("boom").startsWith("No se pudo"), true);
 console.log(fallos ? `\n${fallos} fallos` : "\nfidelidad: todo OK");

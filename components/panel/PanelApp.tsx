@@ -46,7 +46,7 @@ export default function PanelApp() {
   // Quién sos y de qué local: primero la membresía (kiosco_miembros, que cada persona lee solo la suya); si no hay, el local que creaste.
   const cargarKiosco = useCallback(async () => {
     if (!session) return;
-    const COLUMNAS = "id,nombre,slug,whatsapp,direccion,acepta_envio,sellos_por_premio,premio,abierto,horario,pedido_minimo,costo_envio,medios_pago,horario_auto,horarios,baja_solicitada_at,cobro_online_activo,seguimiento_activo,zonas_envio_activo,fotos_auto_activo,franjas_entrega_activo";
+    const COLUMNAS = "id,nombre,slug,whatsapp,direccion,acepta_envio,sellos_por_premio,premio,abierto,horario,pedido_minimo,costo_envio,medios_pago,horario_auto,horarios,baja_solicitada_at,cobro_online_activo,seguimiento_activo,zonas_envio_activo,fotos_auto_activo,franjas_entrega_activo,club_activo,club_max_por_dia,club_espera_min,club_hora_desde,club_hora_hasta";
     const { data: m } = await supabase.from("kiosco_miembros").select("kiosco_id,rol").eq("user_id", session.user.id).eq("activo", true).maybeSingle();
     if (m && esRol(m.rol)) {
       const { data } = await supabase.from("kioscos").select(COLUMNAS).eq("id", m.kiosco_id).maybeSingle();

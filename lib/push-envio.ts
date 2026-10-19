@@ -2,7 +2,7 @@
 import webpush from "web-push";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export async function avisarKiosco(admin: SupabaseClient, kioscoId: string, aviso: { title: string; body: string; url: string }): Promise<number> {
+export async function avisarKiosco(admin: SupabaseClient, kioscoId: string, aviso: { title: string; body: string; url: string; tag?: string }): Promise<number> {
   const { data: subs, error } = await admin.from("push_suscripciones").select("id,endpoint,p256dh,auth_secret").eq("kiosco_id", kioscoId);
   if (error) throw new Error("db");
   if (!subs?.length) return 0;

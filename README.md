@@ -1,4 +1,4 @@
-# Fluxo
+# Go Fluxo
 
 Next.js 14 + Supabase. Catálogo con QR y pedidos por WhatsApp (wa.me) para kioscos y almacenes.
 

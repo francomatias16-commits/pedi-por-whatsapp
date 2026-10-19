@@ -1,4 +1,4 @@
-# Sistema visual — Fluxo ("Mercado Vivo")
+# Sistema visual — Go Fluxo ("Mercado Vivo")
 
 Origen: lenguaje del portal cliente de distrib (`frontend/cliente/`, concepto "Mercado Vivo").
 Dirección: puesto de feria / almacén de barrio, no plantilla SaaS.

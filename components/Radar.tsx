@@ -2,7 +2,7 @@
 import { useConfirmar } from "@/components/ui/Confirmar";
 import { useEffect, useState } from "react";
 import { supabase, type Kiosco, type Producto } from "@/lib/supabase";
-import { linkWhatsApp, peso } from "@/lib/whatsapp";
+import { linkWhatsApp, normalizarTelefonoAR, peso } from "@/lib/whatsapp";
 import { mensajeErrorSql } from "@/lib/errores";
 
 type Fuga = { cliente_id: string; nombre: string; telefono: string; compras: number; ultima_compra: string; dias_sin_comprar: number };
@@ -25,8 +25,8 @@ const ESTADO: Record<string, string> = {
 export default function Radar({ kiosco }: { kiosco: Kiosco }) {
   const [ventanaConfirmar, confirmar] = useConfirmar();
   const [msg, setMsg] = useState("");
-  const [dias, setDias] = useState("45");
-  const [minimo, setMinimo] = useState("3");
+  const [dias, setDias] = useState("21");
+  const [minimo, setMinimo] = useState("2");
   const [fuga, setFuga] = useState<Fuga[]>([]);
   const [reglas, setReglas] = useState<Regla[]>([]);
   const [tipo, setTipo] = useState<Regla["tipo"]>("venta_supera");
@@ -107,8 +107,8 @@ export default function Radar({ kiosco }: { kiosco: Kiosco }) {
             <b>{c.nombre}</b>
             <p className="mut" style={{ margin: ".2rem 0 .5rem" }}>{c.compras} compras · hace {c.dias_sin_comprar} días que no vuelve</p>
             <div className="acciones" style={{ flexWrap: "wrap" }}>
-              <a className="btn principal" target="_blank" rel="noreferrer" href={linkWhatsApp(c.telefono, `Hola ${c.nombre.split(" ")[0]}! Hace ${c.dias_sin_comprar} días que no te vemos por ${kiosco.nombre}. Pasá cuando quieras, te esperamos.`)}>Escribirle por WhatsApp</a>
-              <a className="btn sec" target="_blank" rel="noreferrer" href={linkWhatsApp(c.telefono, `Hola ${c.nombre.split(" ")[0]}! Te escribimos de ${kiosco.nombre}. Tenés un 10 % de descuento en tu próxima compra. Mostrá este mensaje cuando pases.`)}>Ofrecerle 10 % de descuento</a>
+              <a className="btn principal" target="_blank" rel="noreferrer" href={linkWhatsApp(normalizarTelefonoAR(c.telefono), `Hola ${c.nombre.split(" ")[0]}! Hace ${c.dias_sin_comprar} días que no te vemos por ${kiosco.nombre}. Pasá cuando quieras, te esperamos.`)}>Escribirle por WhatsApp</a>
+              <a className="btn sec" target="_blank" rel="noreferrer" href={linkWhatsApp(normalizarTelefonoAR(c.telefono), `Hola ${c.nombre.split(" ")[0]}! Te escribimos de ${kiosco.nombre}. Tenés un 10 % de descuento en tu próxima compra. Mostrá este mensaje cuando pases.`)}>Ofrecerle 10 % de descuento</a>
             </div>
           </div>
         ))}

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AvisoBorrador, Contacto, FECHA_LEGAL, Pie } from "@/components/Legal";
 
-export const metadata: Metadata = { title: "Política de privacidad · Fluxo" };
+export const metadata: Metadata = { title: "Política de privacidad · Go Fluxo" };
 
 export default function Privacidad() {
   return (
@@ -20,6 +20,7 @@ export default function Privacidad() {
       <p><b>En la libreta del comercio:</b> los movimientos de fiado y pagos, y los sellos de fidelidad asociados a un cliente.</p>
       <p><b>Del comercio:</b> el email y el nombre de su cuenta de Google (por el inicio de sesión) y los datos del local: nombre, dirección, WhatsApp, horarios, productos, precios y fotos.</p>
       <p><b>Técnicos:</b> dirección IP y datos básicos del dispositivo, que quedan en los registros de los proveedores de infraestructura.</p>
+      <p><b>De quien se registra en el club de sellos de un comercio:</b> nombre, teléfono, los sellos que suma (con fecha y hora) y la llave secreta de su tarjeta. El comercio ve estos datos y recibe un aviso cada vez que sumás un sello.</p>
       <p>No pedimos datos de tarjetas ni procesamos pagos. No pedimos datos sensibles.</p>
 
       <h2>3. Para qué los usamos</h2>
@@ -33,7 +34,7 @@ export default function Privacidad() {
       <p>Los servidores de estos proveedores pueden estar ubicados fuera de la Argentina, por lo que tus datos pueden almacenarse en otros países. Al hacer un pedido o usar el servicio, aceptás esa transferencia.</p>
 
       <h2>5. Datos guardados en tu dispositivo</h2>
-      <p>Para que no tengas que volver a cargarlos, guardamos en tu navegador (almacenamiento local) tu carrito y tus datos de contacto. Podés borrarlos desde los ajustes del navegador. El panel del comercio guarda la sesión iniciada. No usamos cookies de publicidad ni de seguimiento.</p>
+      <p>Para que no tengas que volver a cargarlos, guardamos en tu navegador (almacenamiento local) tu carrito y tus datos de contacto. Podés borrarlos desde los ajustes del navegador. Si te registrás en el club de un comercio, también guardamos ahí la llave de tu tarjeta para reconocerte la próxima vez. El panel del comercio guarda la sesión iniciada. No usamos cookies de publicidad ni de seguimiento.</p>
 
       <h2>6. Cuánto tiempo los conservamos</h2>
       <p>Mientras el comercio use el servicio, o hasta que se pida la supresión de los datos. Si das de baja tu cuenta de comercio desde Mi negocio, la tienda se cierra enseguida y borramos los datos de tu local a los 30 días (hasta entonces podés arrepentirte). Antes de eso podés bajar una copia de tus datos desde la misma pantalla.</p>

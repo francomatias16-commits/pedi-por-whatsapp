@@ -6,15 +6,17 @@ import ClientesSellos from "./sellos/ClientesSellos";
 import Campanas from "./sellos/Campanas";
 import Premios from "./sellos/Premios";
 import ResumenSellos from "./sellos/ResumenSellos";
+import Club from "./sellos/Club";
+import ReporteEmpleados from "./sellos/ReporteEmpleados";
 import Asistente from "./sellos/Asistente";
 
 export type ProductoSello = { id: string; nombre: string; categoria: string; vendido_por_peso: boolean };
-type Vista = "clientes" | "campanas" | "premios" | "resumen";
-const VISTAS: [Vista, string][] = [["clientes", "Clientes"], ["campanas", "Cómo se suman"], ["premios", "Premios"], ["resumen", "Cómo va"]];
+type Vista = "club" | "clientes" | "campanas" | "premios" | "resumen" | "equipo";
+const VISTAS: [Vista, string][] = [["club", "Club"], ["clientes", "Clientes"], ["campanas", "Cómo se suman"], ["premios", "Premios"], ["resumen", "Cómo va"], ["equipo", "Por empleado"]];
 const num = (v: unknown) => (v == null ? null : Number(v));
 
 export default function Sellos({ kiosco }: { kiosco: Kiosco }) {
-  const [vista, setVista] = useState<Vista>("clientes");
+  const [vista, setVista] = useState<Vista>("club");
   const [campanas, setCampanas] = useState<Campana[]>([]);
   const [premios, setPremios] = useState<Premio[]>([]);
   const [productos, setProductos] = useState<ProductoSello[]>([]);
@@ -48,10 +50,12 @@ export default function Sellos({ kiosco }: { kiosco: Kiosco }) {
         {VISTAS.map(([k, t]) => <button key={k} role="tab" aria-selected={vista === k} className={vista === k ? "" : "sec"} onClick={() => setVista(k)}>{t}</button>)}
       </div>
       {msg && <p role="status" className="mut">{msg}</p>}
+      {vista === "club" && <Club kiosco={kiosco} premios={premios} campanas={campanas} onCambio={cargar} />}
       {vista === "clientes" && <ClientesSellos kiosco={kiosco} campanas={campanas} premios={premios} />}
       {vista === "campanas" && <Campanas kiosco={kiosco} campanas={campanas} productos={productos} onCambio={cargar} />}
       {vista === "premios" && <Premios kiosco={kiosco} premios={premios} productos={productos} onCambio={cargar} />}
       {vista === "resumen" && <ResumenSellos kiosco={kiosco} />}
+      {vista === "equipo" && <ReporteEmpleados kiosco={kiosco} />}
     </>
   );
 }
