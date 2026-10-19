@@ -8,13 +8,13 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/panel",
     scope: "/",
     display: "standalone",
-    background_color: "#f6f3ec",
-    theme_color: "#16302a",
+    background_color: "#edefee",
+    theme_color: "#14181d",
     lang: "es-AR",
     icons: [
-      { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
-      { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: "/icons/gofluxo-192.png", sizes: "192x192", type: "image/png" },
+      { src: "/icons/gofluxo-512.png", sizes: "512x512", type: "image/png" },
+      { src: "/icons/gofluxo-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
   };
 }

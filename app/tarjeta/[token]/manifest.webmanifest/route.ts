@@ -13,8 +13,8 @@ export async function GET(_req: Request, { params }: { params: { token: string }
   }
   const cuerpo = {
     name: `${local} · Sellos`, short_name: local.slice(0, 12), description: "Tu tarjeta de sellos",
-    start_url: `/tarjeta/${params.token}`, scope: `/tarjeta/${params.token}`, display: "standalone", background_color: "#f6f3ec", theme_color: "#16302a", lang: "es-AR",
-    icons: [{ src: "/icon-192.png", sizes: "192x192", type: "image/png" }, { src: "/icon-512.png", sizes: "512x512", type: "image/png" }],
+    start_url: `/tarjeta/${params.token}`, scope: `/tarjeta/${params.token}`, display: "standalone", background_color: "#edefee", theme_color: "#14181d", lang: "es-AR",
+    icons: [{ src: "/icons/gofluxo-192.png", sizes: "192x192", type: "image/png" }, { src: "/icons/gofluxo-512.png", sizes: "512x512", type: "image/png" }],
   };
   return new Response(JSON.stringify(cuerpo), { headers: { "content-type": "application/manifest+json", "cache-control": "no-store" } });
 }
