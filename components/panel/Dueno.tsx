@@ -27,7 +27,6 @@ import BarraInferior from "./BarraInferior";
 import SubNav from "./SubNav";
 import AyudaPanel from "./AyudaPanel";
 import Bienvenida from "./Bienvenida";
-import { leerModo, guardarModo, type Modo } from "@/lib/modo";
 
 export default function Dueno({ kiosco, rol = "dueno", recargar }: { kiosco: Kiosco; rol?: Rol; recargar: () => void }) {
   const router = useRouter();
@@ -44,11 +43,9 @@ export default function Dueno({ kiosco, rol = "dueno", recargar }: { kiosco: Kio
   const [precarga, setPrecarga] = useState<Seleccion[] | null>(null);
   const [precargaCompra, setPrecargaCompra] = useState<{ proveedorId: string; lineas: LineaCompra[] } | null>(null);
   const [ventanaConfirmar, confirmar] = useConfirmar();
-  const [modo, setModoState] = useState<Modo>("simple");
   const [ayudaAbierta, setAyudaAbierta] = useState(false);
   const [bienvenida, setBienvenida] = useState(false);
   useEffect(() => {
-    setModoState(leerModo());
     let visto = false;
     try { visto = localStorage.getItem(`pdw-bienvenida-${kiosco.id}`) === "1"; } catch { visto = true; }
     if (!visto) setBienvenida(true);
@@ -57,7 +54,6 @@ export default function Dueno({ kiosco, rol = "dueno", recargar }: { kiosco: Kio
     setBienvenida(false);
     try { localStorage.setItem(`pdw-bienvenida-${kiosco.id}`, "1"); } catch { /* sin almacenamiento: vuelve a salir */ }
   };
-  const cambiarModo = (m: Modo) => { guardarModo(m); setModoState(m); };
   const [ahora, setAhora] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setAhora(new Date()), 30000); return () => clearInterval(t); }, []);
 
@@ -102,7 +98,7 @@ export default function Dueno({ kiosco, rol = "dueno", recargar }: { kiosco: Kio
       <BarraSuperior kiosco={kiosco} rol={rol} abierta={abierta} bloqueado={estado === "fuera_de_horario"} detalle={detalle} onInterruptor={interruptor} onSalir={() => supabase.auth.signOut()} onAyuda={() => setAyudaAbierta(true)} />
       <NavLateral actual={destino} pendientes={pendientes} porComprar={porComprar} rol={rol} />
       <section className="panel-main">
-        <SubNav destino={destino} tab={tab} modo={modo} rol={rol} />
+        <SubNav destino={destino} tab={tab} rol={rol} />
         {tab === "pedidos" && <Pedidos kiosco={kiosco} rol={rol} />}
         {tab === "productos" && <Productos kiosco={kiosco} />}
         {tab === "fiado" && <Fiado kiosco={kiosco} />}
@@ -115,7 +111,7 @@ export default function Dueno({ kiosco, rol = "dueno", recargar }: { kiosco: Kio
         {tab === "etiquetas" && <Etiquetas kiosco={kiosco} precarga={precarga} onPrecargaUsada={() => setPrecarga(null)} />}
         {tab === "resumen" && <Inicio kiosco={kiosco} onIr={irTab} />}
         {tab === "radar" && <Radar kiosco={kiosco} />}
-        {tab === "local" && <>{puedeConfigurarLocal(rol) && <MiKiosco kiosco={kiosco} onGuardado={recargar} modo={modo} onModo={cambiarModo} onVerBienvenida={() => setBienvenida(true)} />}<h2>Cómo me fue</h2><Resumen kiosco={kiosco} onIr={irTab} /></>}
+        {tab === "local" && <>{puedeConfigurarLocal(rol) && <MiKiosco kiosco={kiosco} onGuardado={recargar} onVerBienvenida={() => setBienvenida(true)} />}<h2>Cómo me fue</h2><Resumen kiosco={kiosco} onIr={irTab} /></>}
       </section>
       <BarraInferior actual={destino} pendientes={pendientes} porComprar={porComprar} onSalir={() => supabase.auth.signOut()} rol={rol} />
     </div>

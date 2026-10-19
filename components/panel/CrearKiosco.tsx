@@ -42,7 +42,7 @@ export default function CrearKiosco({ userId, onListo }: { userId: string; onLis
     setGuardando(false);
     if (error) {
       setEditarLink(true);
-      setErr(error.code === "23505" ? "Esa dirección ya la usa otro kiosco. Probá agregarle tu barrio o un número." : "No pudimos crear tu kiosco. Revisá los datos y probá de nuevo.");
+      setErr(error.code !== "23505" ? "No pudimos crear tu kiosco. Revisá los datos y probá de nuevo." : error.message?.includes("kiosco_miembros_un_local_activo") ? "Esta cuenta ya tiene un kiosco activo. Entrá a ese kiosco para seguir con él." : error.message?.includes("kioscos_slug_key") ? "Ese nombre de enlace ya lo usa otro kiosco. Probá agregarle tu barrio o un número." : "No pudimos crear tu kiosco. Revisá los datos y probá de nuevo.");
       return;
     }
     onListo();
@@ -85,7 +85,7 @@ export default function CrearKiosco({ userId, onListo }: { userId: string; onLis
                 {!editarLink && <button type="button" className="sec" onClick={() => setEditarLink(true)}>Cambiar</button>}
               </div>
               {editarLink && (
-                <label>Dirección de tu tienda
+                <label>Nombre de tu tienda en el enlace
                   <input value={slug} onChange={(e) => { setSlugManual(true); setSlug(slugify(e.target.value)); }} aria-invalid={intento && !!errSlug} />
                 </label>
               )}

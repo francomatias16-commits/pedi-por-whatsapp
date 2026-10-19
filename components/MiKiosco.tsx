@@ -3,7 +3,6 @@ import { useState } from "react";
 import { supabase, type Kiosco } from "@/lib/supabase";
 import { ETIQUETA_PAGO, normalizarTelefonoAR } from "@/lib/whatsapp";
 import QrKiosco from "@/components/QrKiosco";
-import { type Modo } from "@/lib/modo";
 import Pantalla from "@/components/ui/Pantalla";
 import { hayAyuda, linkAyuda } from "@/lib/ayuda";
 import Avisos from "@/components/Avisos";
@@ -15,7 +14,7 @@ import FranjasEntrega from "@/components/FranjasEntrega";
 import FotosAuto from "@/components/FotosAuto";
 import { DIAS, MAX_TRAMOS, ORDEN_SEMANA, hayDiasAbiertos, horariosValidos, resumenHorario, type Horarios } from "@/lib/horario";
 
-export default function MiKiosco({ kiosco, onGuardado, modo, onModo, onVerBienvenida }: { kiosco: Kiosco; onGuardado: () => void; modo: Modo; onModo: (m: Modo) => void; onVerBienvenida: () => void }) {
+export default function MiKiosco({ kiosco, onGuardado, onVerBienvenida }: { kiosco: Kiosco; onGuardado: () => void; onVerBienvenida: () => void }) {
   const [nombre, setNombre] = useState(kiosco.nombre);
   const [wa, setWa] = useState(kiosco.whatsapp);
   const [dir, setDir] = useState(kiosco.direccion ?? "");
@@ -117,12 +116,7 @@ export default function MiKiosco({ kiosco, onGuardado, modo, onModo, onVerBienve
         <Avisos kiosco={kiosco} />
       </Plegable>
 
-      <Plegable titulo="Ayuda y modo">
-        <fieldset style={{ border: 0, padding: 0, margin: "0 0 12px" }}>
-          <legend style={{ fontWeight: 600, marginBottom: 6 }}>¿Cómo querés ver el menú?</legend>
-          <label style={{ display: "block", margin: "6px 0" }}><input type="radio" name="modo" checked={modo === "simple"} onChange={() => onModo("simple")} style={{ width: "auto", marginRight: 8 }} />Simple: solo lo de todos los días</label>
-          <label style={{ display: "block", margin: "6px 0" }}><input type="radio" name="modo" checked={modo === "completo"} onChange={() => onModo("completo")} style={{ width: "auto", marginRight: 8 }} />Completo: todas las pantallas</label>
-        </fieldset>
+      <Plegable titulo="Ayuda">
         <button type="button" className="sec" onClick={onVerBienvenida} style={{ marginRight: 8 }}>Ver la bienvenida otra vez</button>
         {hayAyuda
           ? <a className="btn sec" href={linkAyuda()} target="_blank" rel="noopener noreferrer">Hablar por WhatsApp con nosotros</a>
