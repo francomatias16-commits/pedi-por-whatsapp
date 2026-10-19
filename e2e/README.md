@@ -10,3 +10,5 @@ Prueba el recorrido crítico: salud, 404, panel protegido y tienda → pedido. C
 
 `E2E_SERVICE_ROLE` solo se usa para verificar que el pedido quedó guardado. Nunca va con `NEXT_PUBLIC_`.
 Pendiente de la etapa 0: el paso "panel" con sesión iniciada (el login es solo con Google) se agrega cuando haya un usuario de prueba con contraseña.
+
+Responsive: `npm run test:responsive` revisa que ninguna página tenga scroll horizontal en 360, 390, 768 y 1280 px, y guarda capturas de cada una en el reporte (`playwright show-report`). No necesita sesión; el panel se prueba solo en su pantalla de entrada.

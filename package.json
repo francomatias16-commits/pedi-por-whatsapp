@@ -35,6 +35,7 @@
     "test:roles": "node tests/roles.test.mjs",
     "test:pagos": "node tests/pagos.test.mjs",
     "test:e2e": "playwright test",
+    "test:responsive": "playwright test e2e/responsive.spec.ts",
     "test:qr": "node tests/qr.test.mjs",
     "test:seguimiento": "node tests/seguimiento.test.mjs",
     "test:zonas": "node tests/zonas.test.mjs"
