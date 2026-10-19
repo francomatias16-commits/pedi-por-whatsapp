@@ -74,18 +74,18 @@ def pedir(modalidad="envio", zona_id=None, cant=1, slug="kiosco-a", ocho=False):
     n_tel[0] += 1; as_("anon")
     items = json.dumps([{"producto_id": p1, "cantidad": cant}]); tel = f"54934155540{n_tel[0]:02d}"
     d = "Calle 123" if modalidad == "envio" else None
-    if ocho: return jsn(one("select crear_pedido(%s,'Ana',%s,%s,%s,null,%s::jsonb,'efectivo')", (slug, tel, modalidad, d, items)))
+    if ocho: return jsn(one("select crear_pedido(%s,'Ana',%s,%s,%s,null,%s::jsonb,null::uuid,'efectivo')", (slug, tel, modalidad, d, items)))
     return jsn(one("select crear_pedido(%s,'Ana',%s,%s,%s,null,%s::jsonb,%s,'efectivo')", (slug, tel, modalidad, d, items, zona_id)))
 def pedir_falla(modalidad="envio", zona_id=None, cant=1, slug="kiosco-a", ocho=False):
     n_tel[0] += 1; as_("anon")
     items = json.dumps([{"producto_id": p1, "cantidad": cant}]); tel = f"54934155540{n_tel[0]:02d}"
-    if ocho: return fails("select crear_pedido(%s,'Ana',%s,%s,'Calle 123',null,%s::jsonb,'efectivo')", (slug, tel, modalidad, items))
+    if ocho: return fails("select crear_pedido(%s,'Ana',%s,%s,'Calle 123',null,%s::jsonb,null::uuid,'efectivo')", (slug, tel, modalidad, items))
     return fails("select crear_pedido(%s,'Ana',%s,%s,'Calle 123',null,%s::jsonb,%s,'efectivo')", (slug, tel, modalidad, items, zona_id))
 
 # ===== 1) Sin zonas todo sigue igual
 as_("postgres"); ok(one("select zonas_envio_activo from kioscos where id=%s", (ka,)) is False, "el interruptor arranca apagado")
 r = pedir("envio", None); ok(float(r["costo_envio"]) == 300 and float(r["total"]) == 800, "apagado: envío con el costo único del local")
-r = pedir("envio", None, ocho=True); ok(float(r["costo_envio"]) == 300, "apagado: la versión de 8 argumentos sigue andando")
+r = pedir("envio", None, ocho=True); ok(float(r["costo_envio"]) == 300, "apagado: la versión de 9 argumentos (sin zona ni franja) sigue andando")
 as_("authenticated", A); ok(has(fails("select zonas_configurar_activo(%s,true)", (ka,)), "sin_zonas"), "no se enciende sin zonas")
 
 # ===== 2) Permisos
@@ -116,7 +116,7 @@ as_("authenticated", A); ok(jsn(one("select zonas_configurar_activo(%s,true)", (
 
 # ===== 3) Pedidos con zonas
 ok(has(pedir_falla("envio", None), "zona_requerida"), "envío sin zona: zona_requerida")
-ok(has(pedir_falla("envio", None, ocho=True), "zona_requerida"), "la versión de 8 argumentos también pide zona")
+ok(has(pedir_falla("envio", None, ocho=True), "zona_requerida"), "la versión de 9 argumentos también pide zona")
 ok(has(pedir_falla("envio", zoff), "zona_invalida"), "una zona apagada no sirve")
 zb = zona(B, kb, "Centro", 50, 0)
 ok(has(pedir_falla("envio", zb), "zona_invalida"), "una zona de otro local no sirve")

@@ -176,8 +176,8 @@ ok(bool(fails("select sumar_stock_rapido(%s,1)", (p1,))), "el cajero no suma sto
 
 # 3c) pedidos: el cajero ve y confirma; no borra
 as_("anon")
-pid = jsn(one("select crear_pedido('kiosco-a','Ana','5493415550001','retiro',null,null,%s::jsonb,'efectivo')", (json.dumps([{"producto_id": p2, "cantidad": 1}]),)))["pedido_id"]
-pid2 = jsn(one("select crear_pedido('kiosco-a','Beto','5493415550002','retiro',null,null,%s::jsonb,'efectivo')", (json.dumps([{"producto_id": p2, "cantidad": 1}]),)))["pedido_id"]
+pid = jsn(one("select crear_pedido('kiosco-a','Ana','5493415550001','retiro',null,null,%s::jsonb,null::uuid,'efectivo')", (json.dumps([{"producto_id": p2, "cantidad": 1}]),)))["pedido_id"]
+pid2 = jsn(one("select crear_pedido('kiosco-a','Beto','5493415550002','retiro',null,null,%s::jsonb,null::uuid,'efectivo')", (json.dumps([{"producto_id": p2, "cantidad": 1}]),)))["pedido_id"]
 as_("authenticated", CJ)
 ok(rows("select * from pedidos where kiosco_id=%s", (ka,)) == 2, "el cajero ve los pedidos")
 ok(rows("select * from pedido_items where pedido_id=%s", (pid,)) == 1, "el cajero ve los ítems del pedido")
