@@ -8,6 +8,7 @@ import { mensajeErrorSql } from "@/lib/errores";
 import { DETALLE_ROL, ETIQUETA_ROL, esRol } from "@/lib/navegacion";
 import { tokenValido } from "@/lib/equipo";
 import Aviso from "@/components/ui/Aviso";
+import IngresarConMail from "./IngresarConMail";
 
 export const CLAVE_INVITACION = "pdw-invitacion";
 type Datos = { rol: string; nombre: string };
@@ -73,9 +74,11 @@ export default function Unirse({ token }: { token: string }) {
   if (!session) return caja(
     <>
       <h1>Te invitaron a un kiosco</h1>
-      <p className="mut login-sub">Para aceptar la invitación, entrá con tu cuenta de Google. Después vas a ver a qué local te invitaron antes de confirmar.</p>
+      <p className="mut login-sub">Para aceptar la invitación, entrá con tu cuenta de Google o con tu mail y contraseña. Después vas a ver a qué local te invitaron antes de confirmar.</p>
       <button type="button" className="btn-google" onClick={entrar} disabled={trabajando}>{trabajando ? "Abriendo Google…" : "Continuar con Google"}</button>
       {error && <Aviso tipo="error">{error}</Aviso>}
+      <p className="separador-o" aria-hidden="true"><span>o</span></p>
+      <IngresarConMail />
     </>
   );
 

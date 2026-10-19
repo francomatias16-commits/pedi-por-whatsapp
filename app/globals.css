@@ -624,3 +624,11 @@ button.pos-x { min-height: 36px; width: 36px; padding: 0; }
 .qty button.sec { font-variant-numeric: tabular-nums; }
 .pos-linea .qty button { width: 36px; min-width: 36px; padding: 0; }
 @media (max-width: 560px) { .row:has(> .qty) { flex-wrap: wrap; } .row > .qty { margin-left: auto; } }
+
+/* Ingreso con mail y contraseña (segunda opción junto a Google) */
+.separador-o { display: flex; align-items: center; gap: .75rem; margin: 1rem 0; color: var(--muted); }
+.separador-o::before, .separador-o::after { content: ""; flex: 1; border-top: 2px solid var(--line); }
+.separador-o span { font: 600 .95rem/1 var(--f-ui); }
+.ingreso-mail label { display: block; margin: .6rem 0 0; font-weight: 600; }
+.ingreso-mail input { font-weight: 400; }
+

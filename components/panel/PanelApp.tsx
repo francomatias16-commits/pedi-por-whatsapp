@@ -7,6 +7,7 @@ import { rutaLegacy, esRol, type Rol } from "@/lib/navegacion";
 import { CLAVE_INVITACION } from "./Unirse";
 import { tokenValido } from "@/lib/equipo";
 import Login from "./Login";
+import NuevaContrasena from "./NuevaContrasena";
 import CrearKiosco from "./CrearKiosco";
 import Dueno from "./Dueno";
 
@@ -15,6 +16,7 @@ export default function PanelApp() {
   const router = useRouter();
   const pathname = usePathname();
   const [session, setSession] = useState<Session | null>(null);
+  const [recuperando, setRecuperando] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [kiosco, setKiosco] = useState<Kiosco | null>(null);
   const [rol, setRol] = useState<Rol>("dueno");
@@ -37,7 +39,7 @@ export default function PanelApp() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setCargando(false); });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    const { data: sub } = supabase.auth.onAuthStateChange((ev, s) => { setSession(s); setRecuperando(ev === "PASSWORD_RECOVERY"); });
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -56,6 +58,7 @@ export default function PanelApp() {
   useEffect(() => { cargarKiosco(); }, [cargarKiosco]);
 
   if (cargando) return <div className="login-wrap" aria-busy="true" aria-label="Cargando"><div className="card login-card"><div className="esq esq-t" /><div className="esq" /><div className="esq esq-b" /></div></div>;
+  if (session && recuperando) return <NuevaContrasena onListo={() => setRecuperando(false)} />;
   if (!session) return <Login />;
   if (buscando) return <div className="login-wrap" aria-busy="true" aria-label="Cargando"><div className="card login-card"><div className="esq esq-t" /><div className="esq" /><div className="esq esq-b" /></div></div>;
   if (!kiosco) return <CrearKiosco userId={session.user.id} onListo={cargarKiosco} />;

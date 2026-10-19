@@ -5,6 +5,7 @@ import { DESTINOS, destinosPara, rutaDeTab, type Destino, type Rol } from "@/lib
 import { hayAyuda, linkAyuda } from "@/lib/ayuda";
 import { ICONO_DESTINO, Icono } from "./iconos";
 import Cuenta from "./Insignias";
+import InstalarApp from "./InstalarApp";
 
 const PRINCIPALES: Destino[] = ["inicio", "vender", "pedidos", "productos"];
 const EN_MAS: Destino[] = ["clientes", "compras", "negocio"];
@@ -42,6 +43,7 @@ export default function BarraInferior({ actual, pendientes, porComprar, onSalir,
             {id === "compras" && <Cuenta n={porComprar} que="productos para reponer" />}
           </Link>
         ))}
+        <InstalarApp block />
         {hayAyuda && <a className="hoja-item" href={linkAyuda()} target="_blank" rel="noopener noreferrer"><span className="nav-txt"><b>Ayuda por WhatsApp</b><small>Te respondemos nosotros</small></span></a>}
         <button type="button" className="sec hoja-salir" onClick={() => { setAbierta(false); onSalir(); }}>Salir</button>
       </dialog>

@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import AyudaWhatsApp from "@/components/AyudaWhatsApp";
+import IngresarConMail from "./IngresarConMail";
 
 const GoogleLogo = () => (
   <svg width="22" height="22" viewBox="0 0 18 18" aria-hidden="true">
@@ -34,11 +35,13 @@ export default function Login() {
       <Link href="/" className="volver">← Volver al inicio</Link>
       <div className="card login-card">
         <h1>Entrá a tu kiosco</h1>
-        <p className="mut login-sub">Usá tu cuenta de Google (la misma de tu mail de Gmail). Si es la primera vez, te ayudamos a crear tu kiosco.</p>
+        <p className="mut login-sub">Entrá con tu cuenta de Google o con tu mail y contraseña. Si es la primera vez, te ayudamos a crear tu kiosco.</p>
         <button type="button" className="btn-google" onClick={entrar} disabled={abriendo}>
           <GoogleLogo /> {abriendo ? "Abriendo Google…" : "Continuar con Google"}
         </button>
         {error && <p role="alert" className="error">{error}</p>}
+        <p className="separador-o" aria-hidden="true"><span>o</span></p>
+        <IngresarConMail />
         <p className="mut login-nota">Usamos tu cuenta solo para reconocerte. No publicamos nada ni compartimos tus datos.</p>
         <details className="login-ayuda">
           <summary>¿No tenés cuenta de Google?</summary>
