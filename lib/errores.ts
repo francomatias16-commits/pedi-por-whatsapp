@@ -60,6 +60,15 @@ export const ERRORES_SQL: [string, string][] = [
   ["zona_costo_invalido", "El costo y el pedido mínimo tienen que ser números de cero en adelante, con hasta dos decimales."],
   ["zona_repetida", "Ya tenés una zona con ese nombre."],
   ["zona_no_encontrada", "No encontramos esa zona."],
+  // Ventana de entrega (0036)
+  ["franja_requerida", "Elegí en qué franja querés recibir el pedido."],
+  ["franja_invalida", "Esa franja ya no está disponible. Elegí otra."],
+  ["franja_nombre_invalido", "Escribí un nombre para la franja."],
+  ["franja_horas_invalidas", "La hora de inicio tiene que ser anterior a la de fin."],
+  ["franja_repetida", "Ya tenés una franja con ese nombre."],
+  ["franja_no_encontrada", "No encontramos esa franja."],
+  ["franjas_maximas", "Llegaste al máximo de franjas."],
+  ["sin_franjas", "Cargá al menos una franja disponible antes de encender esta opción."],
   ["zonas_maximas", "Llegaste al máximo de 30 zonas."],
   ["sin_zonas", "Para encender el envío por zonas, primero cargá al menos una zona activa."],
   // Fotos automáticas (0034)
@@ -68,6 +77,7 @@ export const ERRORES_SQL: [string, string][] = [
   ["foto_producto_invalido", "No encontramos ese producto en tu local."],
   ["foto_no_encontrada", "No encontramos ese cambio de foto, o ya se deshizo."],
   ["foto_cambio_posterior", "Después de ese cambio la foto se modificó otra vez, así que no se puede deshacer."],
+  ["foto_vencida", "Ya pasó el plazo para deshacer ese cambio de foto."],
   ["limite_fotos", "Llegaste al tope de búsquedas en internet de hoy. Probá mañana o subí la foto vos."],
 ];
 

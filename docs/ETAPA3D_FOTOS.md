@@ -31,6 +31,28 @@ Tercera parte de la Etapa 3 (la 3B, WhatsApp oficial, sigue pendiente de Meta). 
 - `SERPER_API_KEY` (opcional): clave de https://serper.dev. Sin ella solo se usan la base de la red y Open Food Facts.
 - `FOTOS_LIMITE_DIARIO` (opcional): tope diario por local de la fuente paga.
 
+## Completar las fotos que faltan (lote)
+
+En Productos, arriba del catálogo, aparece "Fotos que faltan (N)" cuando el interruptor está encendido y hay productos sin foto.
+
+- **Tandas de 25.** "Buscar fotos para los que faltan" revisa de a 25 productos (los disponibles primero, por nombre) y después se pide "la siguiente tanda". Se puede parar en cualquier momento.
+- **Solo fuentes gratuitas:** la base de la red y Open Food Facts. En lote no se usa la búsqueda en internet (Serper), porque es paga y exige confirmar derechos producto por producto. El servidor lo garantiza con `solo_gratis` en `/api/fotos/sugerir`.
+- **Nunca aplica sola.** Cada fila muestra la foto propuesta junto al nombre del producto y arranca sin tildar. "Tildar las que coinciden por código" marca las de productos con código de barras (coincidencia exacta); las encontradas por nombre dicen que hay que revisarlas. "Usar N fotos tildadas" las guarda una por una con el mismo camino de siempre (`foto_aplicar`), así quedan en el historial.
+- Las fotos aplicadas en lote no tienen botón de deshacer en pantalla (el de a uno solo aparece justo después de aplicar); si una quedó mal, se cambia desde el producto.
+- Quién puede: encargado y dueño, igual que el modo de a uno. Sin interruptor, no aparece.
+- Código: `lib/fotos-lote.ts` (lógica pura, con prueba), `components/FotosLote.tsx`, `aplicarFotoGratuita` en `lib/fotos-cliente.ts`.
+
+## Limpieza de fotos viejas
+
+Migración `0035_fotos_limpieza.sql` y cron semanal `/api/cron/fotos-limpieza` (lunes 06:40 UTC, ver `vercel.json`).
+
+- Borra del bucket la foto que se reemplazó hace más de 30 días (o la foto que se deshizo, si su baja había fallado). Cambia el plazo con `FOTOS_RETENCION_DIAS` (de 7 a 365).
+- **Nunca borra una foto que un producto use hoy**, ni una que otra aplicación reciente todavía pueda restaurar. Solo borra dentro de la carpeta del propio local.
+- Cada fila del historial se marca como `limpiada_at` y no se vuelve a revisar. El historial se conserva; solo se borran los archivos.
+- Pasado el plazo, `foto_deshacer` responde `foto_vencida` en vez de volver a un archivo que ya no existe. En la app, "Deshacer el cambio" solo aparece justo después de aplicar, así que en la práctica no cambia nada para el local.
+- Se autoriza con `CRON_SECRET`, igual que los otros crons. Devuelve cuántos archivos borró.
+- Si un borrado falla, esa fila no se marca y se reintenta la semana siguiente.
+
 ## Seguridad de la descarga
 
 `/api/fotos/descargar` pide una URL ajena, así que se defiende en capas (código en `lib/fotos-descarga.ts` y `lib/fotos-sugerencias.ts`):
@@ -47,14 +69,14 @@ Pendiente de probar en preview: la descarga exitosa de una foto real (en el cont
 
 - **Sugerir, no aplicar solo.** Una foto equivocada en la tienda pública es peor que no tener foto.
 - **Confirmación de derechos solo para fotos de internet.** Open Food Facts es de licencia abierta; las de la base de la red las cargaron otros locales.
-- **La foto anterior no se borra al aplicar una nueva**, para poder deshacer. Quedan archivos viejos en el bucket; si molesta el espacio, se puede agregar una limpieza de fotos con más de 30 días en el historial.
+- **La foto anterior no se borra al aplicar una nueva**, para poder deshacer. Pasados 30 días, la limpieza automática (ver abajo) borra el archivo.
 - **Serper como fuente paga**, por ser barata y simple. Se cambia tocando solo `leerSerper` y la llamada en `/api/fotos/sugerir`.
-- **Una por una.** No hay modo "completar todas las fotos que faltan": queda para después si los pilotos lo piden.
+- **Completar en lote, de a tandas y con revisión.** Ver la sección siguiente. El modo de a uno sigue igual para la búsqueda en internet.
 
 ## Despliegue
 
 1. Backup.
-2. Aplicar `0034_fotos_auto.sql` en el SQL Editor (después de la 0033), antes de subir el código.
+2. Aplicar `0034_fotos_auto.sql` en el SQL Editor (después de la 0033), y luego `0035_fotos_limpieza.sql`, antes de subir el código.
 3. Cargar `SERPER_API_KEY` en Vercel si se quiere la búsqueda en internet.
 4. Subir el código y probar en preview.
 5. Dejar el interruptor apagado hasta probar con un piloto.
@@ -69,3 +91,9 @@ Pendiente de probar en preview: la descarga exitosa de una foto real (en el cont
 - [ ] "Deshacer el cambio" devuelve la foto anterior (o deja el producto sin foto si no había).
 - [ ] Con el tope en 1, la segunda búsqueda en internet del día avisa y no falla.
 - [ ] En el celular, las miniaturas se tocan cómodo y el texto se lee.
+- [ ] Lote: con 30 productos sin foto, la primera tanda revisa 25 y la siguiente los 5 restantes.
+- [ ] Lote: nada queda tildado al principio; "Usar fotos tildadas" las pone en el catálogo y en la tienda pública, y desaparecen de la lista de faltantes.
+- [ ] Lote: un cajero no ve la sección ni puede llamar a `/api/fotos/sugerir` (401).
+- [ ] Lote: no se ven sugerencias con la etiqueta de internet (Serper), aunque haya `SERPER_API_KEY`.
+- [ ] Limpieza: abrir `/api/cron/fotos-limpieza` con `Authorization: Bearer <CRON_SECRET>` responde 200 con `borrados: 0` si no hay nada vencido, y 401 sin el secreto.
+- [ ] Limpieza: con una fila de prueba de más de 30 días en `fotos_historial`, el archivo viejo desaparece del bucket y la foto actual del producto sigue visible.

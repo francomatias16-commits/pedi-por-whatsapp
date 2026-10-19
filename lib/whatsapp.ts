@@ -26,7 +26,7 @@ export function linkWhatsApp(telefonoIntl: string, texto: string) {
 
 export function mensajePedido(p: {
   numero?: number; nombre: string; telefono: string; modalidad: "retiro" | "envio";
-  direccion?: string; costoEnvio?: number; medioPago?: string; items: { nombre: string; cantidad: number; precio: number }[]; total: number; notas?: string;
+  direccion?: string; franja?: string; costoEnvio?: number; medioPago?: string; items: { nombre: string; cantidad: number; precio: number }[]; total: number; notas?: string;
 }) {
   const lineas = p.items.map((i) => `• ${i.cantidad} x ${i.nombre} — ${peso(i.precio * i.cantidad)}`);
   return [
@@ -36,6 +36,7 @@ export function mensajePedido(p: {
     `Total: ${peso(p.total)}`,
     p.medioPago ? `Pago: ${ETIQUETA_PAGO[p.medioPago] ?? p.medioPago}` : "",
     p.modalidad === "envio" ? `Envío a: ${p.direccion}` : "Retiro en el local",
+    p.modalidad === "envio" && p.franja ? `Entrega: ${p.franja}` : "",
     p.notas ? `Nota: ${p.notas}` : "",
     `Nombre: ${p.nombre}`,
     `Tel: ${p.telefono}`,

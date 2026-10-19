@@ -203,7 +203,7 @@ export default function Pedidos({ kiosco, rol = "dueno" }: { kiosco: Kiosco; rol
             </span>
           </button>
           <div className="mut">
-            {new Date(p.created_at).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })} · {p.modalidad === "envio" ? `Envío${p.zona_nombre ? ` (${p.zona_nombre})` : ""}: ${p.direccion}` : "Retiro"} · {peso(Number(p.total))} · {ETIQUETA_PAGO[p.medio_pago] ?? p.medio_pago}
+            {new Date(p.created_at).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })} · {p.modalidad === "envio" ? `Envío${p.zona_nombre ? ` (${p.zona_nombre})` : ""}: ${p.direccion}${p.franja_nombre ? ` · Entrega: ${p.franja_nombre}` : ""}` : "Retiro"} · {peso(Number(p.total))} · {ETIQUETA_PAGO[p.medio_pago] ?? p.medio_pago}
           </div>
           {abierto === p.id && (
             <ul style={{ margin: "8px 0", paddingLeft: 20 }}>

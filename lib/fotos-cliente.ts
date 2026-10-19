@@ -1,5 +1,6 @@
 // Llamadas del navegador a /api/fotos/*, con la sesión de quien está en el panel.
 import { supabase } from "@/lib/supabase";
+import { BUCKET, comprimirImagen, rutaFoto } from "@/lib/fotos";
 import type { Sugerencia } from "@/lib/fotos-sugerencias";
 
 export const MENSAJES_FOTOS: Record<string, string> = {
@@ -12,6 +13,7 @@ export const MENSAJES_FOTOS: Record<string, string> = {
   imagen_muy_grande: "Esa foto es demasiado pesada. Probá con otra.",
   imagen_ilegible: "No pudimos leer esa foto. Probá con otra.",
   sin_conexion: "No hay conexión. Revisala y probá de nuevo.",
+  foto_vencida: "Ya pasó el plazo para deshacer ese cambio.",
 };
 
 async function cabeceras(): Promise<Record<string, string>> {
@@ -22,9 +24,9 @@ async function cabeceras(): Promise<Record<string, string>> {
 export type RespuestaSugerir = { sugerencias: Sugerencia[]; limite_alcanzado: boolean; busqueda_disponible: boolean };
 
 /** Pide fotos candidatas. Lanza Error con el código si falla. */
-export async function buscarSugerencias(kiosco: string, producto: string): Promise<RespuestaSugerir> {
+export async function buscarSugerencias(kiosco: string, producto: string, soloGratis = false): Promise<RespuestaSugerir> {
   let r: Response;
-  try { r = await fetch("/api/fotos/sugerir", { method: "POST", headers: await cabeceras(), body: JSON.stringify({ kiosco, producto }), cache: "no-store" }); }
+  try { r = await fetch("/api/fotos/sugerir", { method: "POST", headers: await cabeceras(), body: JSON.stringify({ kiosco, producto, ...(soloGratis ? { solo_gratis: true } : {}) }), cache: "no-store" }); }
   catch { throw new Error("sin_conexion"); }
   const j = (await r.json().catch(() => ({}))) as Partial<RespuestaSugerir> & { error?: string };
   if (!r.ok) throw new Error(j.error ?? "foto_no_responde");
@@ -38,4 +40,19 @@ export async function descargarFoto(kiosco: string, url: string): Promise<Blob> 
   catch { throw new Error("sin_conexion"); }
   if (!r.ok) { const j = (await r.json().catch(() => ({}))) as { error?: string }; throw new Error(j.error ?? "foto_no_responde"); }
   return r.blob();
+}
+
+/**
+ * Aplica una foto sugerida de fuente gratuita: la baja por el servidor, la comprime, la sube al bucket del local y la asigna con foto_aplicar.
+ * Si algo falla después de subir, borra el archivo para no dejar huérfanos. Lanza Error con el código si falla.
+ */
+export async function aplicarFotoGratuita(kiosco: string, producto: string, s: { url: string; fuente: "global" | "openfoodfacts" }): Promise<void> {
+  const bytes = await descargarFoto(kiosco, s.url);
+  const blob = await comprimirImagen(new File([bytes], "foto", { type: bytes.type }));
+  const ruta = rutaFoto(kiosco, producto);
+  const { error } = await supabase.storage.from(BUCKET).upload(ruta, blob, { contentType: "image/jpeg", cacheControl: "31536000" });
+  if (error) throw error;
+  const url = supabase.storage.from(BUCKET).getPublicUrl(ruta).data.publicUrl;
+  const { error: e2 } = await supabase.rpc("foto_aplicar", { p_kiosco: kiosco, p_producto: producto, p_url: url, p_fuente: s.fuente, p_derechos: false });
+  if (e2) { await supabase.storage.from(BUCKET).remove([ruta]); throw e2; }
 }

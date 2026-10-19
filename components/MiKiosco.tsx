@@ -11,6 +11,7 @@ import MisDatos from "@/components/MisDatos";
 import CobroMP from "@/components/CobroMP";
 import Equipo from "@/components/Equipo";
 import ZonasEnvio from "@/components/ZonasEnvio";
+import FranjasEntrega from "@/components/FranjasEntrega";
 import FotosAuto from "@/components/FotosAuto";
 import { DIAS, MAX_TRAMOS, ORDEN_SEMANA, hayDiasAbiertos, horariosValidos, resumenHorario, type Horarios } from "@/lib/horario";
 
@@ -130,6 +131,10 @@ export default function MiKiosco({ kiosco, onGuardado, modo, onModo, onVerBienve
 
       <Plegable titulo="Envío por zonas">
         <ZonasEnvio kiosco={kiosco} onCambio={onGuardado} />
+      </Plegable>
+
+      <Plegable titulo="Ventana de entrega">
+        <FranjasEntrega kiosco={kiosco} onCambio={onGuardado} />
       </Plegable>
 
       <Plegable titulo="Fotos automáticas">

@@ -22,6 +22,7 @@ async function pedir(url: string, init?: RequestInit): Promise<unknown> {
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const kiosco = String(body?.kiosco ?? ""), producto = String(body?.producto ?? "");
+  const soloGratis = body?.solo_gratis === true;   // modo lote: sin búsqueda en internet (fuente paga y con derechos de autor)
   if (!UUID.test(kiosco) || !UUID.test(producto)) return NextResponse.json({ error: "datos_invalidos" }, { status: 400 });
   const admin = crearAdmin();
   if (!(await rolDe(req, admin, kiosco, ["encargado", "dueno"]))) return NextResponse.json({ error: "no_autorizado" }, { status: 401 });
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
 
   // 3) Buscador de imágenes (fuente paga, con tope diario por local). Solo si hace falta y hay clave.
   let sugerencias = juntarSugerencias(listas), limiteAlcanzado = false;
-  const clave = process.env.SERPER_API_KEY, busquedaDisponible = !!clave && !!q;
+  const clave = process.env.SERPER_API_KEY, busquedaDisponible = !soloGratis && !!clave && !!q;
   if (busquedaDisponible && sugerencias.length < 3) {
     const { error } = await uso("busqueda", limiteDiario(process.env.FOTOS_LIMITE_DIARIO));
     if (error) limiteAlcanzado = (error.message ?? "").includes("limite_fotos");
