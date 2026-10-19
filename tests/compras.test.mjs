@@ -1,7 +1,8 @@
 // Prueba de lib/compras.ts: node tests/compras.test.mjs  (o: npm run test:compras)
 import ts from "typescript";
 import { readFileSync } from "node:fs";
-const src = readFileSync(new URL("../lib/compras.ts", import.meta.url), "utf8");
+import { inlinarErrores } from "./_errores.mjs";
+const src = inlinarErrores(readFileSync(new URL("../lib/compras.ts", import.meta.url), "utf8"));
 const js = ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
 const C = await import("data:text/javascript;base64," + Buffer.from(js).toString("base64"));
 let fallos = 0;

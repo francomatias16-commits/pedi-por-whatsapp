@@ -1,5 +1,6 @@
 // Reposición de stock (0018): lógica pura, sin Next ni Supabase, para poder probarla en Node.
 import { cantidadTexto } from "./compras";
+import { mensajeErrorSql } from "./errores";
 
 export type EstadoRepo = "agotado" | "critico" | "bajo";
 export type FilaReposicion = {
@@ -82,16 +83,7 @@ export function armarAvisoStock(a: { agotados: number; bajos: number; sin_provee
   return { title: "Hay que reponer mercadería", body: partes.join(" · ") + sp, url: "/panel?tab=reponer" };
 }
 
-export const ERRORES_REPOSICION: [string, string][] = [
-  ["no_autorizado", "No tenés permiso para esta operación."],
-  ["proveedor_no_encontrado", "Ese proveedor ya no existe. Actualizá la página."],
-  ["stock_no_controlado", "Ese producto no controla stock. Activalo desde Productos."],
-  ["cantidad_invalida", "Revisá la cantidad."],
-  ["pin_requerido", "Hace falta el PIN de supervisor."],
-  ["tipo_ajuste_invalido", "Elegí un motivo de la lista."],
-  ["motivo_requerido", "Escribí un motivo de al menos 3 letras."],
-];
-export const mensajeReposicion = (m: string) => ERRORES_REPOSICION.find(([k]) => m.includes(k))?.[1] ?? "No se pudo completar la operación.";
+export const mensajeReposicion = (m: string) => mensajeErrorSql(m, "reposicion");
 
 // Motivos de ajuste de stock (0019). Las pérdidas son merma, rotura y vencimiento; el conteo se informa aparte.
 export const MOTIVOS_AJUSTE: [string, string][] = [

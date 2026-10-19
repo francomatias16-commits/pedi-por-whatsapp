@@ -28,7 +28,7 @@ for (const linea of crudo.split(/\r?\n/)) {
 }
 if (!items.length) { console.error("El archivo no tiene códigos válidos."); process.exit(1); }
 
-const UA = "pedi-por-whatsapp-prueba/0.5 (prueba de cobertura)";
+const UA = "fluxo-prueba/0.5 (prueba de cobertura)";
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const BASES = [

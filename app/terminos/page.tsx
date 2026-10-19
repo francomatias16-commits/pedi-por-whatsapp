@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AvisoBorrador, Contacto, FECHA_LEGAL, Pie } from "@/components/Legal";
 
-export const metadata: Metadata = { title: "Términos y condiciones · Pedí por WhatsApp" };
+export const metadata: Metadata = { title: "Términos y condiciones · Fluxo" };
 
 export default function Terminos() {
   return (
@@ -11,7 +11,7 @@ export default function Terminos() {
       <p className="mut">Última actualización: {FECHA_LEGAL}</p>
       <AvisoBorrador />
 
-      <h2>1. Qué es Pedí por WhatsApp</h2>
+      <h2>1. Qué es Fluxo</h2>
       <p>Es una herramienta que permite a kioscos, almacenes y comercios de barrio (“el Comercio”) publicar un catálogo con una página propia y recibir pedidos de sus clientes por WhatsApp. También ofrece registros internos para el Comercio: pedidos, fiado y sellos de fidelidad. En estos términos, “nosotros” es el equipo que opera el servicio.</p>
 
       <h2>2. Quién es parte de cada compra</h2>

@@ -1,4 +1,4 @@
--- Pedí por WhatsApp · v1: kioscos, productos, clientes, pedidos
+-- Fluxo · v1: kioscos, productos, clientes, pedidos
 -- RLS: cada dueño ve solo lo suyo. El público (anon) lee tienda y crea pedidos solo vía RPC.
 
 

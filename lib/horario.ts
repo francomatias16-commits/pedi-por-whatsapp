@@ -19,7 +19,7 @@ export function horaArgentina(ahora: Date): { dow: number; min: number } {
   return { dow: d.getUTCDay(), min: d.getUTCHours() * 60 + d.getUTCMinutes() };
 }
 
-export function tramoValido(t: Tramo): boolean {
+function tramoValido(t: Tramo): boolean {
   return RE_HORA.test(t?.desde ?? "") && RE_HORA.test(t?.hasta ?? "") && t.desde !== t.hasta;
 }
 export function horariosValidos(h: Horarios): boolean {
@@ -27,7 +27,7 @@ export function horariosValidos(h: Horarios): boolean {
 }
 export const hayDiasAbiertos = (h: Horarios) => Object.values(h).some((ts) => ts.length > 0);
 
-export function enHorario(h: Horarios, ahora: Date): boolean {
+function enHorario(h: Horarios, ahora: Date): boolean {
   const { dow, min } = horaArgentina(ahora);
   for (const t of h[String(dow)] ?? []) {
     const d = aMin(t.desde), f = aMin(t.hasta);

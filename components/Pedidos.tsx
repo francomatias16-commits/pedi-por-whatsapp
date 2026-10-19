@@ -16,11 +16,6 @@ type Item = { nombre: string; cantidad: number; precio_unit: number };
 type PedidoConItems = Pedido & { pedido_items: Item[]; fiado_movimientos: { id: string }[] | { id: string } | null };
 // PostgREST devuelve objeto (relación 1 a 1) o lista según la versión: se acepta ambos.
 const tieneFiado = (p: PedidoConItems) => Array.isArray(p.fiado_movimientos) ? p.fiado_movimientos.length > 0 : !!p.fiado_movimientos;
-const ERRORES_FIADO: Record<string, string> = {
-  sin_cliente: "Este pedido no tiene un cliente asociado. Anotalo a mano en Fiado.",
-  estado_invalido: "Primero confirmá el pedido.",
-  monto_invalido: "El pedido no tiene un total para anotar.",
-};
 type Filtro = "hoy" | "pendientes" | "todos";
 const FILTROS: [Filtro, string][] = [["hoy", "Hoy"], ["pendientes", "Por atender"], ["todos", "Todos"]];
 const ESTADO: Record<Pedido["estado"], { texto: string; icono: string; tono: "alerta" | "info" | "ok" | "error" }> = {
@@ -100,7 +95,7 @@ export default function Pedidos({ kiosco, rol = "dueno" }: { kiosco: Kiosco; rol
     const t = setInterval(() => { tick++; if (document.visibilityState === "visible" && (!enVivoRef.current || tick % 4 === 0)) cargar(); }, 15000);
     const onVis = () => { if (document.visibilityState === "visible") cargar(); };
     document.addEventListener("visibilitychange", onVis);
-    return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVis); document.title = "Pedí por WhatsApp"; };
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVis); document.title = "Fluxo"; };
   }, [cargar]);
 
   // Realtime: el pedido aparece al instante (la base solo envía los del propio kiosco, por RLS).
@@ -136,7 +131,7 @@ export default function Pedidos({ kiosco, rol = "dueno" }: { kiosco: Kiosco; rol
   async function aFiado(p: PedidoConItems) {
     setError(""); setAviso("");
     const { data, error: err } = await supabase.rpc("pasar_a_fiado", { p_pedido: p.id });
-    if (err) { setError(ERRORES_FIADO[Object.keys(ERRORES_FIADO).find((k) => err.message.includes(k)) ?? ""] ?? "No se pudo anotar el fiado. Probá de nuevo."); return; }
+    if (err) { setError(mensajeErrorSql(err.message, "fiado", "No se pudo anotar el fiado. Probá de nuevo.")); return; }
     const saldo = Number((data as { saldo: number }).saldo);
     setAviso(`${(data as { ya_estaba: boolean }).ya_estaba ? "Ya estaba anotado" : "Anotado en Fiado"} · ${p.cliente_nombre} debe ${peso(saldo)} en total.`);
     cargar();

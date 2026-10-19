@@ -4,7 +4,7 @@ export type FuenteFoto = "global" | "openfoodfacts" | "busqueda";
 export type Sugerencia = { url: string; miniatura: string; fuente: FuenteFoto; titulo: string; abierta: boolean };
 
 export const MAX_SUGERENCIAS = 6;
-export const LIMITE_DIARIO_DEFECTO = 30;     // consultas diarias por local a la fuente paga
+const LIMITE_DIARIO_DEFECTO = 30;     // consultas diarias por local a la fuente paga
 export const MAX_DESCARGA_BYTES = 5 * 1024 * 1024;
 export const TIPOS_IMAGEN = ["image/jpeg", "image/png", "image/webp"];
 /** Open Food Facts y sus hermanas publican fotos con licencia abierta (CC BY-SA). El resto son de terceros. */

@@ -34,7 +34,7 @@ export default function MiKiosco({ kiosco, onGuardado, onVerBienvenida }: { kios
 
   const dia = (d: number) => hs[String(d)] ?? [];
   const poner = (d: number, ts: { desde: string; hasta: string }[]) => setHs((p) => { const n = { ...p }; if (ts.length) n[String(d)] = ts; else delete n[String(d)]; return n; });
-  const copiarLunes = () => setHs(Object.fromEntries(ORDEN_SEMANA.filter((d) => dia(1).length).map((d) => [String(d), dia(1).map((t) => ({ ...t }))])));
+  const copiarLunes = () => setHs(Object.fromEntries(ORDEN_SEMANA.map((d) => [String(d), dia(1).map((t) => ({ ...t }))])));
 
   async function guardar() {
     setGuardando(true); setMsg("");

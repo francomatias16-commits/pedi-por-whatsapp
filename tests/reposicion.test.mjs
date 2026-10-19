@@ -1,10 +1,13 @@
 // Prueba de lib/reposicion.ts: node tests/reposicion.test.mjs  (o: npm run test:reposicion)
 import ts from "typescript";
 import { readFileSync } from "node:fs";
-const leer = (f) => ts.transpileModule(readFileSync(new URL(`../lib/${f}`, import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
+import { inlinarErrores } from "./_errores.mjs";
+const leerCrudo = (f) => readFileSync(new URL(`../lib/${f}`, import.meta.url), "utf8");
+const transpilar = (src) => ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
 // reposicion.ts importa ./compras: se inlinea la dependencia para no depender de un resolvedor de módulos en Node.
-const compras = leer("compras.ts").replace(/^export /gm, "");
-const repo = leer("reposicion.ts").replace(/^import .*compras.*$/m, "");
+// errores.ts se inlinea una sola vez (en compras); reposicion lo usa de ahí.
+const compras = transpilar(inlinarErrores(leerCrudo("compras.ts"))).replace(/^export /gm, "");
+const repo = transpilar(leerCrudo("reposicion.ts").replace(/^import \{ mensajeErrorSql \} from "\.\/errores";$/m, "")).replace(/^import .*compras.*$/m, "");
 const js = compras + "\n" + repo;
 const R = await import("data:text/javascript;base64," + Buffer.from(js).toString("base64"));
 let fallos = 0;

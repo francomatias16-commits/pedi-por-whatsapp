@@ -6,32 +6,15 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase, type Kiosco, type Producto } from "@/lib/supabase";
 import Link from "next/link";
 import { estadoTienda, resumenHorario, textoApertura } from "@/lib/horario";
+import { mensajeErrorSql } from "@/lib/errores";
 import { ETIQUETA_PAGO, linkWhatsApp, mensajePedido, normalizarTelefonoAR, peso } from "@/lib/whatsapp";
 
-const ERRORES: [string, string][] = [
-  ["producto_no_disponible", "Algún producto ya no está disponible. Actualizá la página y armá el pedido de nuevo."],
-  ["sin_stock", "Se acabó alguno de los productos del pedido. Revisá el carrito y armalo de nuevo."],
-  ["envio_invalido", "Este local no hace envíos, o falta la dirección."],
-  ["telefono_invalido", "Revisá el número de WhatsApp."],
-  ["nombre_invalido", "Poné tu nombre."],
-  ["kiosco_no_encontrado", "No encontramos este local."],
-  ["local_cerrado", "El local está cerrado por ahora. Probá más tarde."],
-  ["fuera_de_horario", "El local está fuera de su horario de atención. Probá cuando abra."],
-  ["minimo_no_alcanzado", "No llegás al monto mínimo del pedido."],
-  ["medio_pago_invalido", "Ese medio de pago no está disponible. Elegí otro."],
-  ["demasiados_pedidos", "Ya enviaste varios pedidos hace un momento. Esperá unos minutos."],
-  ["zona_requerida", "Elegí a qué zona va el envío."],
-  ["zona_invalida", "Esa zona ya no está disponible. Elegí otra."],
-  ["franja_requerida", "Elegí en qué franja querés recibir el pedido."],
-  ["franja_invalida", "Esa franja ya no está disponible. Elegí otra."],
-  ["local_saturado", "El local recibió muchos pedidos juntos. Probá en unos minutos."],
-];
 const ERRORES_PAGO: Record<string, string> = {
   pago_no_disponible: "Este local no puede cobrar online en este momento. Avisale por WhatsApp o hacé el pedido de nuevo con otro medio de pago.",
   pedido_no_pagable: "Este pedido ya no está esperando pago.",
   mp_no_responde: "Mercado Pago no responde. Probá de nuevo en un momento.",
 };
-const mensajeError = (m: string) => ERRORES.find(([k]) => m.includes(k))?.[1] ?? "No pudimos registrar el pedido. Revisá los datos e intentá de nuevo.";
+const mensajeError = (m: string) => mensajeErrorSql(m, "checkout", "No pudimos registrar el pedido. Revisá los datos e intentá de nuevo.");
 const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 const leer = <T,>(k: string, def: T): T => { try { const v = localStorage.getItem(k); return v ? (JSON.parse(v) as T) : def; } catch { return def; } };
 const guardarLS = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* modo privado: se ignora */ } };
