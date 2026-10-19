@@ -102,8 +102,8 @@ export default function Asistente({ kiosco, onListo, onCancelar }: { kiosco: Kio
 
       <div className="acciones" style={{ marginTop: 12, flexWrap: "wrap" }}>
         {paso === 1 ? <button type="button" className="sec" onClick={onCancelar}>Cancelar</button> : <button type="button" className="sec" onClick={() => setPaso((paso - 1) as 1 | 2)}>Volver</button>}
-        {paso < 3 && <button type="button" className="principal" onClick={siguiente}>Seguir</button>}
-        {paso === 3 && <button type="button" className="principal" disabled={ocupado} onClick={guardar}>{ocupado ? "Guardando…" : "Guardar mi programa"}</button>}
+        {paso < 3 && <button type="button" onClick={siguiente}>Seguir</button>}
+        {paso === 3 && <button type="button" disabled={ocupado} onClick={guardar}>{ocupado ? "Guardando…" : "Guardar mi programa"}</button>}
       </div>
     </div>
   );

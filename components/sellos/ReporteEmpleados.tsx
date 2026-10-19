@@ -36,7 +36,7 @@ export default function ReporteEmpleados({ kiosco }: { kiosco: Kiosco }) {
             {e.senales.map((s) => <span key={s} role="status" style={{ marginLeft: 8 }}>⚠ {s}</span>)}
           </summary>
           {e.dias.map((d) => (
-            <div className="row" key={d.dia} style={{ borderTop: "1px solid var(--line, #ddd)", padding: ".35rem 0" }}>
+            <div className="row fila-sep" key={d.dia}>
               <span>{fechaCorta(d.dia)}</span>
               <span>{d.sellos} sello{d.sellos === 1 ? "" : "s"}{d.manuales ? ` · ${d.manuales} manual${d.manuales === 1 ? "" : "es"}` : ""}{d.canjes ? ` · ${d.canjes} canje${d.canjes === 1 ? "" : "s"}` : ""}{d.anulados ? ` · ${d.anulados} anulado${d.anulados === 1 ? "" : "s"}` : ""}</span>
             </div>

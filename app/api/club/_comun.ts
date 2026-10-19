@@ -5,7 +5,7 @@ import { avisarKiosco } from "@/lib/push-envio";
 
 export const anonimo = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
 
-type Aviso = { kiosco_id: string; cliente: string; cantidad: number; nuevo: boolean };
+type Aviso = { kiosco_id: string; cliente: string; cantidad: number; nuevo: boolean; medio?: string | null };
 
 /** Avisa al kiosquero. Si falla no se rompe nada: el sello ya está sumado y también se ve en el panel. */
 export async function avisarClub(a: Aviso | undefined) {

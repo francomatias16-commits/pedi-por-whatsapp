@@ -10,7 +10,7 @@ export type Campana = {
   desde: string | null; hasta: string | null; tope_diario: number | null;
 };
 export type TipoPremio = "libre" | "producto" | "pct" | "monto";
-export type Premio = { id: string; nombre: string; descripcion: string | null; costo_sellos: number; tipo: TipoPremio; producto_id: string | null; valor: number | null; activo: boolean };
+export type Premio = { id: string; nombre: string; descripcion: string | null; costo_sellos: number; tipo: TipoPremio; producto_id: string | null; valor: number | null; activo: boolean; tope_pesos?: number | null };
 
 export const TIPOS: { tipo: TipoCampana; titulo: string; ayuda: string }[] = [
   { tipo: "visita", titulo: "Por compra", ayuda: "Cada pedido entregado o venta del mostrador suma sellos." },
@@ -140,7 +140,7 @@ export function describirCampana(c: Campana, nombreProducto?: string): string {
 }
 
 // ── Premios ──
-export type FormPremio = { nombre: string; descripcion: string; costo_sellos: string; tipo: TipoPremio; producto_id: string; valor: string };
+export type FormPremio = { nombre: string; descripcion: string; costo_sellos: string; tipo: TipoPremio; producto_id: string; valor: string; tope?: string };
 export const PREMIO_VACIO: FormPremio = { nombre: "", descripcion: "", costo_sellos: "10", tipo: "libre", producto_id: "", valor: "" };
 export const TIPOS_PREMIO: { tipo: TipoPremio; titulo: string; ayuda: string }[] = [
   { tipo: "libre", titulo: "Libre", ayuda: "Lo escribís vos (un café, una entrada, lo que quieras) y lo entregás a mano." },
@@ -158,18 +158,21 @@ export function validarPremio(f: FormPremio): string | null {
   if (f.tipo === "producto" && !f.producto_id) return "Elegí el producto del premio.";
   if (f.tipo === "pct") { const v = aNum(f.valor); if (vacio(f.valor) || !(v > 0 && v <= 100)) return "El descuento tiene que ser un porcentaje entre 0 y 100."; }
   if (f.tipo === "monto") { const v = aNum(f.valor); if (vacio(f.valor) || !(v > 0)) return "Indicá el monto del descuento."; }
+  if (f.tipo === "pct" && !vacio(f.tope ?? "")) { const t = aNum(f.tope ?? ""); if (!(t > 0)) return "El tope en pesos tiene que ser mayor que cero (o dejalo vacío)."; }
   return null;
 }
 export const premioDesdeForm = (f: FormPremio) => ({
   nombre: f.nombre.trim(), descripcion: f.descripcion.trim() || null, costo_sellos: aNum(f.costo_sellos), tipo: f.tipo,
   producto_id: f.tipo === "producto" ? f.producto_id : null, valor: f.tipo === "pct" || f.tipo === "monto" ? aNum(f.valor) : null,
+  tope_pesos: f.tipo === "pct" && !vacio(f.tope ?? "") ? aNum(f.tope ?? "") : null,
 });
 export const formDesdePremio = (p: Premio): FormPremio => ({
   nombre: p.nombre, descripcion: p.descripcion ?? "", costo_sellos: String(p.costo_sellos), tipo: p.tipo, producto_id: p.producto_id ?? "", valor: p.valor == null ? "" : String(p.valor),
+  tope: p.tope_pesos == null ? "" : String(p.tope_pesos),
 });
 export function describirPremio(p: Premio, nombreProducto?: string): string {
   const q = `${plural(p.costo_sellos, "sello", "sellos")}`;
-  if (p.tipo === "pct") return `${q} · ${p.valor}% de descuento`;
+  if (p.tipo === "pct") return `${q} · ${p.valor}% de descuento${p.tope_pesos ? `, hasta ${dinero(p.tope_pesos)}` : ""}`;
   if (p.tipo === "monto") return `${q} · ${dinero(p.valor ?? 0)} de descuento`;
   if (p.tipo === "producto") return `${q} · ${nombreProducto ?? "producto"} gratis`;
   return q;
@@ -180,13 +183,27 @@ export function describirPremio(p: Premio, nombreProducto?: string): string {
  * Para "monto" y "producto" se convierte a porcentaje con 2 decimales (lo mínimo que acepta la base): el descuento real
  * puede diferir unos centavos del monto pedido. El "libre" no descuenta nada.
  */
-export function pctDePremio(p: Pick<Premio, "tipo" | "valor">, totalSinPremio: number, precioProducto = 0, subtotalProducto = Infinity): number {
+export function pctDePremio(p: Pick<Premio, "tipo" | "valor"> & { tope_pesos?: number | null }, totalSinPremio: number, precioProducto = 0, subtotalProducto = Infinity): number {
   if (p.tipo === "libre" || !(totalSinPremio > 0)) return 0;
   let pct: number;
-  if (p.tipo === "pct") pct = p.valor ?? 0;
+  if (p.tipo === "pct") {
+    pct = p.valor ?? 0;
+    // Con tope en pesos: el descuento no pasa de ese monto. Se redondea hacia abajo para no pasarse del tope.
+    if (p.tope_pesos && p.tope_pesos > 0) return Math.min(Math.floor(Math.min(pct, (p.tope_pesos / totalSinPremio) * 100) * 100) / 100, 100);
+  }
   else if (p.tipo === "monto") pct = ((p.valor ?? 0) / totalSinPremio) * 100;
   else pct = (Math.min(precioProducto, subtotalProducto) / totalSinPremio) * 100;
   return Math.min(100, Math.max(0, Math.round(pct * 100) / 100));
+}
+
+/**
+ * Descuento en pesos (exacto, sin pasar por porcentaje) que aplica un premio de monto o de producto.
+ * Devuelve null si el premio descuenta en porcentaje o no descuenta nada. Igual que la base: se topa en el total.
+ */
+export function montoDePremio(p: Pick<Premio, "tipo" | "valor">, totalSinPremio: number, precioProducto = 0, subtotalProducto = Infinity): number | null {
+  if (p.tipo === "monto") return Math.max(0, Math.round((p.valor ?? 0) * 100) / 100);
+  if (p.tipo === "producto") return Math.max(0, Math.round(Math.min(precioProducto, subtotalProducto) * 100) / 100);
+  return null;
 }
 
 // ---- Promo de horas flojas: un atajo para crear/editar una campaña "multiplicador" con días y horario (el motor de la 0017 ya la aplica). ----

@@ -18,7 +18,7 @@ export default function FidelidadCaja({ kiosco, cliente, aplicado, pct, descuent
     (async () => {
       const [s, p] = await Promise.all([
         supabase.from("clientes_sellos").select("sellos_disponibles").eq("id", cliente.id).maybeSingle(),
-        supabase.from("fidelidad_premios").select("id,nombre,descripcion,costo_sellos,tipo,producto_id,valor,activo").eq("kiosco_id", kiosco.id).eq("activo", true).order("costo_sellos"),
+        supabase.from("fidelidad_premios").select("id,nombre,descripcion,costo_sellos,tipo,producto_id,valor,activo,tope_pesos").eq("kiosco_id", kiosco.id).eq("activo", true).order("costo_sellos"),
       ]);
       if (!vivo) return;
       setSaldo(s.data ? Number(s.data.sellos_disponibles) : 0);

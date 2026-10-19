@@ -1,29 +1,23 @@
-# Sistema visual — Go Fluxo ("Mercado Vivo")
+# Sistema visual — Go Fluxo ("Góndola")
 
-Origen: lenguaje del portal cliente de distrib (`frontend/cliente/`, concepto "Mercado Vivo").
-Dirección: puesto de feria / almacén de barrio, no plantilla SaaS.
+Reemplaza a "Mercado Vivo" (ver `CHANGELOG_rediseno_gondola.md`). La fuente de verdad es `app/globals.css`.
 
-## Piezas
-| Pieza | Clase | Dónde |
-|---|---|---|
-| Franja de marca (verde profundo + filo arcilla) | `.franja` | `app/layout.tsx` |
-| Titular tipo afiche (Fraunces itálica + punto arcilla) | `.afiche`, `.punto` | portada, tienda |
-| Etiqueta de dato (sello de mostrador) | `.tag` | horario |
-| Pestañas con subrayado (inactiva = `.sec`) | `.tabs`, `.chips` | panel, filtros, categorías |
-| Barra pegajosa de búsqueda | `.sticky` | tienda |
-| Tarjeta ticket (esquina cortada + sombra dura) | `.producto` > `.card-producto` | grilla de productos |
-| Recibo con línea punteada | `.recibo`, `.total` | pedido |
-| Aviso de estado | `.aviso-tienda`, `.alerta` | cerrado / error |
-| Barra inferior de pedido | `.bar` | tienda |
-| Botón de cantidad circular | `.qty` | tienda |
+## Principios
+- Rotulado de local de venta: tinta casi negra, amarillo de etiqueta, gris hormigón.
+- Un solo acento (amarillo), siempre con tinta encima: nunca texto amarillo.
+- Bordes firmes, esquinas casi rectas, sombras duras de un solo sentido.
+- Sin emojis, sin degradados, sin fondos decorativos, sin serif.
+- Accesibilidad: texto base 18 px, objetivos de 48 px, foco con doble anillo, estados con palabra + color.
 
-Los componentes no cambian de lógica: el estado activo de las pestañas se marca con
-`button:not(.sec)`, así que basta con mantener esa convención.
+## Tokens (`:root`)
+- Neutros: `--ink`, `--ink-2`, `--ink-3`, `--muted`, `--bg`, `--bg-2`, `--line`, `--line-soft`, `--surface`.
+- Acento: `--signal`, `--signal-dark`, `--signal-soft`.
+- Estados: `--ok`, `--warn`, `--danger`, `--info` (cada uno con `-bg`).
+- Tipografía: `--f-display` (Barlow Condensed), `--f-ui` (IBM Plex Sans), `--f-mono` (IBM Plex Mono).
+- Otros: `--r`, `--sh-card`, `--sh-lift`, `--fs-base`, `--fs-sm`, `--target`, `--cinta`.
 
-## Tokens (`app/globals.css`, `:root`)
-- Papel `#F6F3EC`, tinta `#16211C`, verde profundo `#16302A`, acento salvia `#86B792`, arcilla `#C1552C`.
-- Tipografía: Fraunces (titulares), IBM Plex Sans (interfaz), IBM Plex Mono (precios y etiquetas).
-- Fuentes cargadas con `next/font/google` en `app/layout.tsx`.
-
-## Para diferenciar el producto
-Cambiar solo los valores de `--deep`, `--clay` y `--accent` en `:root`. Todo lo demás los toma de ahí.
+## Reglas para los componentes
+- Colores solo con `var(--token)`; nada de hex en `.tsx` (el cartel del Club lee los tokens en tiempo de ejecución).
+- Botón principal = `button` sin clase (amarillo). Secundario = `.sec`. Destructivo = `.peligro`.
+- Tarjeta = `.card`. Fila = `.row`; fila con separador = `.row.fila-sep`. Texto auxiliar = `.mut`.
+- Evitar `style={{}}` para color, borde o tipografía; usar clases.

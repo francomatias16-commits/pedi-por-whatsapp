@@ -237,7 +237,7 @@ export default function Conteo({ kiosco }: { kiosco: Kiosco }) {
             <div className="row"><b>{i.nombre}</b><span className="mut">Sistema: {cantidadTexto(i.stock_actual, i.por_peso)}</span></div>
             <label style={{ display: "block", marginTop: 8 }}>Contado
               <input inputMode="decimal" placeholder="Ej: 12" value={txt} autoFocus={unoPorUno} onChange={(e) => setEdits({ ...edits, [i.producto_id]: e.target.value })}
-                style={cambio ? { borderColor: "#e67e22" } : undefined} />
+                style={cambio ? { borderColor: "var(--warn)" } : undefined} />
             </label>
           </div>
         );

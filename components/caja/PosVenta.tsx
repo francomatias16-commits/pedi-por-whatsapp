@@ -3,7 +3,7 @@ import { useConfirmar } from "@/components/ui/Confirmar";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase, type Kiosco } from "@/lib/supabase";
 import FidelidadCaja from "./FidelidadCaja";
-import { mensajeFidelidad, pctDePremio, type Premio } from "@/lib/fidelidad";
+import { mensajeFidelidad, montoDePremio, pctDePremio, type Premio } from "@/lib/fidelidad";
 import { cantidadTexto, fecha, mensajeError, norm, type Cliente, type LineaCarrito, type PagoVenta, type PosConfig, type ProductoPos, type Turno } from "@/lib/caja";
 import { DetectorEscaneo } from "@/lib/pos/escaneo";
 import { formatoPeso, mismoPlu, parsearBalanza } from "@/lib/pos/balanza";
@@ -83,9 +83,15 @@ export default function PosVenta({ kiosco, turno, productos, favoritos, clientes
     const l = lineas.find((x) => x.producto_id === premio.producto_id);
     return pctDePremio(premio, sinPremio.total, l?.precio ?? 0, l ? l.precio * l.cantidad : 0);
   }, [premio, lineas, sinPremio.total]);
-  const descUsado = premio && premio.tipo !== "libre" ? String(pctPremio) : descPct;
-  const calc = useMemo(() => calcularVenta(lineas, promos, Number(descUsado.replace(",", ".")) || 0), [lineas, promos, descUsado]);
-  const tot = useMemo(() => ({ subtotal: calc.subtotal, descuento: calc.descuento, total: calc.total, pct: Math.min(100, Math.max(0, Number(descUsado.replace(",", ".")) || 0)) }), [calc, descUsado]);
+  // Premio de monto o de producto: descuento en pesos exacto (la base lo recibe como p_descuento_monto).
+  const montoPremio = useMemo(() => {
+    if (!premio || premio.tipo === "libre" || premio.tipo === "pct") return null;
+    const l = lineas.find((x) => x.producto_id === premio.producto_id);
+    return montoDePremio(premio, sinPremio.total, l?.precio ?? 0, l ? l.precio * l.cantidad : 0);
+  }, [premio, lineas, sinPremio.total]);
+  const descUsado = premio && premio.tipo !== "libre" && montoPremio == null ? String(pctPremio) : (montoPremio != null ? "0" : descPct);
+  const calc = useMemo(() => calcularVenta(lineas, promos, Number(descUsado.replace(",", ".")) || 0, undefined, montoPremio), [lineas, promos, descUsado, montoPremio]);
+  const tot = useMemo(() => ({ subtotal: calc.subtotal, descuento: calc.descuento, total: calc.total, pct: Math.min(100, Math.max(0, Number(descUsado.replace(",", ".")) || 0)), monto: montoPremio }), [calc, descUsado, montoPremio]);
   useEffect(() => { setPremio(null); if (cliente) setAvisoFid(""); }, [cliente?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const refrescarCola = useCallback(() => { setPendientes(cola.pendientes().length); setRechazadas(cola.rechazadas().map((v) => ({ offline_id: v.offline_id, total: v.total, motivo: v.motivo, fecha: v.fecha }))); }, [cola]);
   // Lo vendido sin conexión y aún no sincronizado ya no está disponible en el stock local.
@@ -217,9 +223,9 @@ export default function PosVenta({ kiosco, turno, productos, favoritos, clientes
     const offlineId = crypto.randomUUID();
     const cliVenta = cliente; const premioVenta = premio;
     const items = lineas.map((l) => ({ producto_id: l.producto_id, cantidad: l.cantidad, descuento_pct: l.descuento_pct }));
-    const args = { p_turno: turno.id, p_items: items, p_pagos: pagos, p_cliente: cliente?.id ?? null, p_descuento_pct: tot.pct, p_offline_id: offlineId };
+    const args = { p_turno: turno.id, p_items: items, p_pagos: pagos, p_cliente: cliente?.id ?? null, p_descuento_pct: tot.pct, p_descuento_monto: tot.monto, p_offline_id: offlineId };
     const guardarSinConexion = () => {
-      cola.encolar({ offline_id: offlineId, turno_id: turno.id, fecha: new Date().toISOString(), items, pagos, cliente_id: cliente?.id ?? null, descuento_pct: tot.pct, total: tot.total });
+      cola.encolar({ offline_id: offlineId, turno_id: turno.id, fecha: new Date().toISOString(), items, pagos, cliente_id: cliente?.id ?? null, descuento_pct: tot.pct, descuento_monto: tot.monto, total: tot.total });
       const efectivo = pagos.filter((p) => p.medio === "efectivo").reduce((a, p) => a + p.monto, 0);
       const vuelto = Math.max(0, Math.round((pagos.reduce((a, p) => a + p.monto, 0) - tot.total) * 100) / 100);
       const t = armarTicket(0, { subtotal: tot.subtotal, descuento: tot.descuento, total: tot.total, vuelto: efectivo > 0 ? vuelto : 0 }, pagos, true);
@@ -248,7 +254,7 @@ export default function PosVenta({ kiosco, turno, productos, favoritos, clientes
     setSincronizando(true);
     const r = await cola.sincronizar(async (v: VentaPendiente) => {
       const { error: err } = await supabase.rpc("registrar_venta_mostrador", {
-        p_turno: v.turno_id, p_items: v.items, p_pagos: v.pagos, p_cliente: v.cliente_id, p_descuento_pct: v.descuento_pct, p_offline_id: v.offline_id, p_fecha: v.fecha,
+        p_turno: v.turno_id, p_items: v.items, p_pagos: v.pagos, p_cliente: v.cliente_id, p_descuento_pct: v.descuento_pct, p_descuento_monto: v.descuento_monto ?? null, p_offline_id: v.offline_id, p_fecha: v.fecha,
       });
       if (!err) return { ok: true as const };
       const hayCodigo = !!(err as { code?: string }).code;

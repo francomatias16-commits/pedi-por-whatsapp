@@ -2,11 +2,13 @@
 import { useCallback, useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { supabase, type Kiosco } from "@/lib/supabase";
-import { ajustesDesdeForm, linkClub, resumenLimites, type ActividadClub } from "@/lib/club";
+import { ajustesDesdeForm, esMedioDigital, linkClub, nombreMedio, resumenLimites, type ActividadClub } from "@/lib/club";
 import { mensajeErrorSql } from "@/lib/errores";
 import type { Campana, Premio } from "@/lib/fidelidad";
 import HorasFlojas from "./HorasFlojas";
 import PremiosListos from "./PremiosListos";
+import PapelitosClub from "./PapelitosClub";
+import Rentabilidad from "./Rentabilidad";
 import Avisos from "@/components/Avisos";
 
 const hora = (s: string) => new Date(s).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Argentina/Buenos_Aires" });
@@ -22,9 +24,14 @@ function partir(ctx: CanvasRenderingContext2D, texto: string, ancho: number): st
 async function descargarCartel(kiosco: Kiosco, url: string, premio: Premio | null) {
   const W = 1080, H = 1528, c = document.createElement("canvas"); c.width = W; c.height = H;
   const g = c.getContext("2d")!;
-  g.fillStyle = "#f6f3ec"; g.fillRect(0, 0, W, H);
-  g.strokeStyle = "#16302a"; g.lineWidth = 10; g.strokeRect(30, 30, W - 60, H - 60);
-  g.fillStyle = "#16302a"; g.textAlign = "center";
+  const css = getComputedStyle(document.documentElement);
+  const tinta = css.getPropertyValue("--ink").trim() || "#14181d";
+  const fondo = css.getPropertyValue("--surface").trim() || "#ffffff";
+  const senal = css.getPropertyValue("--signal").trim() || "#ffc61a";
+  g.fillStyle = fondo; g.fillRect(0, 0, W, H);
+  g.fillStyle = senal; g.fillRect(0, 0, W, 40); g.fillRect(0, H - 40, W, 40);
+  g.strokeStyle = tinta; g.lineWidth = 10; g.strokeRect(30, 70, W - 60, H - 140);
+  g.fillStyle = tinta; g.textAlign = "center";
   g.font = "800 84px system-ui, sans-serif";
   let y = 190; for (const l of partir(g, "Sumá sellos en cada compra", W - 200)) { g.fillText(l, W / 2, y); y += 98; }
   g.font = "600 52px system-ui, sans-serif";
@@ -33,7 +40,7 @@ async function descargarCartel(kiosco: Kiosco, url: string, premio: Premio | nul
   await new Promise((r) => { qr.onload = r; });
   g.drawImage(qr, (W - 640) / 2, y + 60, 640, 640);
   g.font = "700 50px system-ui, sans-serif"; y += 790;
-  for (const t of ["1. Escaneá el QR y creá tu tarjeta (una sola vez)", "2. Después de pagar, abrí tu tarjeta", "3. Tocá «Sumar mi compra»"]) { for (const l of partir(g, t, W - 220)) { g.fillText(l, W / 2, y); y += 62; } y += 14; }
+  for (const t of ["1. Escaneá el QR y creá tu tarjeta (una sola vez)", "2. Después de pagar, abrí tu tarjeta", "3. Elegí cómo pagaste y sumá tu sello"]) { for (const l of partir(g, t, W - 220)) { g.fillText(l, W / 2, y); y += 62; } y += 14; }
   g.font = "600 40px system-ui, sans-serif"; g.fillText(kiosco.nombre, W / 2, H - 90);
   c.toBlob((b) => {
     if (!b) return;
@@ -84,6 +91,14 @@ export default function Club({ kiosco, premios, campanas, onCambio }: { kiosco: 
     await cargar();
   }
 
+  async function verificar(e: ActividadClub) {
+    setMsg("");
+    const { error } = await supabase.rpc("club_verificar", { p_evento: e.evento });
+    if (error) return setMsg(mensajeErrorSql(error.message, "club"));
+    setMsg(`Confirmaste el sello de ${e.nombre}.`);
+    await cargar();
+  }
+
   async function guardarPremio() {
     setMsg("");
     const costo = Number(pCosto), nombre = pNombre.trim();
@@ -108,28 +123,34 @@ export default function Club({ kiosco, premios, campanas, onCambio }: { kiosco: 
   async function copiar() { try { await navigator.clipboard.writeText(url); setCopiado(true); setTimeout(() => setCopiado(false), 2500); } catch { setCopiado(false); } }
 
   const hoy = (act ?? []).filter((e) => !e.rechazado);
+  const porVerificar = hoy.filter((e) => esMedioDigital(e.medio) && e.verificado === false).length;
   return (
     <>
       <div className="card">
         <h3>Sellos de las últimas 24 horas</h3>
-        <p className="mut" style={{ marginTop: 0 }}>Cada vez que un cliente suma, te llega un aviso. Si no estaba en el local o no compró, rechazá el sello. No hace falta confirmar los demás.</p>
+        <p className="mut" style={{ marginTop: 0 }}>Cada vez que un cliente suma, te llega un aviso. Si no estaba en el local o no compró, rechazá el sello. Los de efectivo no hace falta confirmarlos; los de transferencia o Mercado Pago, mirá el comprobante y confirmalos.</p>
         {act === null && <p className="mut">Cargando…</p>}
         {act && act.length === 0 && <p className="mut">Todavía nadie sumó. Pegá el cartel con el QR en el mostrador (más abajo) para empezar.</p>}
-        {act && act.length > 0 && <p className="mut">{hoy.length} sello{hoy.length === 1 ? "" : "s"} válido{hoy.length === 1 ? "" : "s"}.</p>}
+        {act && act.length > 0 && <p className="mut">{hoy.length} sello{hoy.length === 1 ? "" : "s"} válido{hoy.length === 1 ? "" : "s"}{porVerificar > 0 ? ` · ${porVerificar} por verificar con comprobante` : ""}.</p>}
         {(act ?? []).map((e) => (
-          <div className="row" key={e.evento} style={{ borderTop: "1px solid var(--line, #ddd)", padding: ".5rem 0", gap: 8 }}>
+          <div className="row fila-sep" key={e.evento}>
             <span style={{ textDecoration: e.rechazado ? "line-through" : undefined }}>
-              <b>{e.nombre}</b> · +{e.cantidad} · {hora(e.cuando)}{e.nuevo ? " · cliente nuevo" : ""}
+              <b>{e.nombre}</b> · +{e.cantidad} · {hora(e.cuando)}{e.nuevo ? " · cliente nuevo" : ""}{e.medio ? ` · ${nombreMedio(e.medio)}` : ""}{esMedioDigital(e.medio) && !e.rechazado ? (e.verificado ? " · ✔ verificado" : " · por verificar") : ""}
             </span>
-            {e.rechazado
-              ? <button type="button" className="sec" onClick={() => rechazar(e, false)}>Deshacer</button>
-              : <button type="button" className="sec" onClick={() => rechazar(e, true)}>Rechazar</button>}
+            <span style={{ display: "flex", gap: 6 }}>
+              {!e.rechazado && esMedioDigital(e.medio) && e.verificado === false && <button type="button" onClick={() => verificar(e)}>Confirmar</button>}
+              {e.rechazado
+                ? <button type="button" className="sec" onClick={() => rechazar(e, false)}>Deshacer</button>
+                : <button type="button" className="sec" onClick={() => rechazar(e, true)}>Rechazar</button>}
+            </span>
           </div>
         ))}
       </div>
       {msg && <p role="status" className="mut">{msg}</p>}
 
       <PremiosListos kiosco={kiosco} premio={principal} />
+
+      <PapelitosClub kiosco={kiosco} />
 
       <div className="card">
         <h3>Tu premio</h3>
@@ -138,6 +159,8 @@ export default function Club({ kiosco, premios, campanas, onCambio }: { kiosco: 
         <button type="button" onClick={guardarPremio}>Guardar premio</button>
         <p className="mut">Cuando el cliente completa la tarjeta te muestra la pantalla y lo canjeás desde Clientes. Otros premios y reglas: pestañas “Cómo se suman” y “Premios”.</p>
       </div>
+
+      <Rentabilidad kiosco={kiosco} onCambio={onCambio} />
 
       <HorasFlojas kiosco={kiosco} campanas={campanas} onCambio={onCambio} />
 

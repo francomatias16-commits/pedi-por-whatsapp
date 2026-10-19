@@ -36,10 +36,11 @@ export function calcularLinea(l: LineaCalc, promos: Promo[], hoy: string): { bru
   return { bruto, promo, promo_id: promo > 0 ? mejorId : null, promo_nombre: promo > 0 ? mejorNombre : null, man, linea: bruto - promo - man };
 }
 
-export function calcularVenta(lineas: LineaCalc[], promos: Promo[], descGlobalPct: number, hoy = hoyAR()): ResultadoVenta {
+export function calcularVenta(lineas: LineaCalc[], promos: Promo[], descGlobalPct: number, hoy = hoyAR(), descGlobalMonto: number | null = null): ResultadoVenta {
   const calc = lineas.map((l) => calcularLinea(l, promos, hoy));
   const sumLinea = calc.reduce((s, c) => s + c.linea, 0);
-  const descG = dividir(sumLinea * pct100(descGlobalPct), 10000);
+  // Monto en pesos (premio de monto o de producto): exacto y topado en el total. Si no hay monto, el porcentaje de siempre.
+  const descG = descGlobalMonto != null ? Math.min(aCent(descGlobalMonto), sumLinea) : dividir(sumLinea * pct100(descGlobalPct), 10000);
   let resto = descG;
   const netos = calc.map((c, i) => {
     if (descG === 0 || sumLinea === 0) return c.linea;

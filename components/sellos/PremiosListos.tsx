@@ -26,7 +26,7 @@ export default function PremiosListos({ kiosco, premio }: { kiosco: Kiosco; prem
       <h3>Tarjetas completas ({lista.length})</h3>
       <p className="mut" style={{ marginTop: 0 }}>Ya juntaron {premio.costo_sellos} sellos. Avisales con un toque; cuando vienen, canjeás el premio desde Clientes.</p>
       {lista.map((c) => (
-        <div className="row" key={c.id} style={{ borderTop: "1px solid var(--line, #ddd)", padding: ".5rem 0", gap: 8 }}>
+        <div className="row fila-sep" key={c.id}>
           <span><b>{c.nombre}</b> · {c.sellos_disponibles} sellos</span>
           <a className="btn sec" target="_blank" rel="noreferrer" href={linkWhatsApp(normalizarTelefonoAR(c.telefono), mensajePremioListo(c.nombre, kiosco.nombre, premio.nombre))}>Avisarle por WhatsApp</a>
         </div>

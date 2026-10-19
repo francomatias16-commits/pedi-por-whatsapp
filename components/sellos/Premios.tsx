@@ -61,6 +61,7 @@ export default function Premios({ kiosco, premios, productos, onCambio }: { kios
             </label>
           )}
           {form.tipo === "pct" && <label>Porcentaje de descuento<input inputMode="decimal" value={form.valor} onChange={(e) => set("valor", e.target.value)} placeholder="10" /></label>}
+          {form.tipo === "pct" && <label>Tope en pesos (opcional)<input inputMode="decimal" value={form.tope ?? ""} onChange={(e) => set("tope", e.target.value)} placeholder="Sin tope" /></label>}
           {form.tipo === "monto" && <label>Monto de descuento ($)<input inputMode="decimal" value={form.valor} onChange={(e) => set("valor", e.target.value)} placeholder="500" /></label>}
           <label>Descripción (opcional)<input value={form.descripcion} maxLength={200} onChange={(e) => set("descripcion", e.target.value)} /></label>
           <div className="row" style={{ justifyContent: "flex-start", gap: 6, marginTop: 8 }}>

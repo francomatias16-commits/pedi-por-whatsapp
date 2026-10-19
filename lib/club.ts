@@ -2,6 +2,9 @@
 // El cliente se registra una vez con el QR del local y después suma su propio sello; el kiosquero recibe un aviso y puede rechazarlo.
 
 export const CLUB_TOKEN_RE = /^[0-9a-f]{32}$/;
+/** Papelito: 6 caracteres sin I, L, O, 0 ni 1 (igual que la generación en la 0044). Se acepta en minúsculas y con espacios o guiones. */
+export const CODIGO_CLUB_RE = /^[2-9A-HJKMNP-Z]{6}$/;
+export const normalizarCodigoClub = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
 export const RUTA_CLUB_PANEL = "/panel/clientes/puntos"; // misma ruta que rutaDeTab("sellos")
 export const claveTokenLocal = (slug: string) => `gf-club-${slug}`;
 
@@ -10,9 +13,28 @@ export type Tarjeta = {
   local: string; slug: string; whatsapp: string; cliente: string; sellos: number; premio: string | null; meta: number | null;
   listo: boolean; puede_sumar: boolean; bloqueo: Bloqueo | null; historial: { fecha: string; cantidad: number }[];
   por_compra?: number; // sellos que suma hoy una compra, según las campañas activas del local (sellos dobles incluidos)
+  exige_codigo?: boolean; // el local pide el papelito para pagos en efectivo
+  ref?: string | null; cumple_dia?: number | null; cumple_mes?: number | null; // código para invitar amigos y cumpleaños cargado
+  hay_cumple?: boolean; hay_referido?: boolean; // el local tiene activos el regalo de cumpleaños y "Traé un amigo"
+  niveles?: { nombre: string; costo_sellos: number; alcanzado: boolean }[]; // premios por etapas
+  proximo?: { nombre: string; costo_sellos: number; faltan: number } | null;
+  sorteo?: { nombre: string; hasta: string; mis_chances: number } | null; // sorteo vigente con permiso confirmado
 };
+
+/** Link para invitar a un amigo: lleva a la pantalla de registro del local con el código. */
+export const linkInvitacion = (slug: string, ref: string, origen = "") => `${origen.replace(/\/$/, "")}/${slug}/club?ref=${encodeURIComponent(ref)}`;
+export const mensajeInvitacion = (local: string, link: string) => `¡Hola! Sumate al club de sellos de ${local}. Si te registrás con este link, los dos sumamos sellos: ${link}`;
+export const REF_CLUB_RE = /^[A-Z0-9]{4,16}$/;
+/** Limpia el código del link (mayúsculas y sin símbolos). Vacío si no sirve. */
+export const normalizarRef = (r: string | null | undefined) => { const t = (r ?? "").toUpperCase().replace(/[^A-Z0-9]/g, ""); return REF_CLUB_RE.test(t) ? t : ""; };
 export type DatosClub = { nombre: string; slug: string; whatsapp: string; premio: string | null; meta: number | null; por_compra?: number; bienvenida?: number };
-export type ActividadClub = { evento: string; cliente_id: string; nombre: string; telefono: string; cantidad: number; cuando: string; rechazado: boolean; nuevo: boolean };
+export type MedioClub = "efectivo" | "transferencia" | "mercadopago";
+export const MEDIOS_CLUB: MedioClub[] = ["efectivo", "transferencia", "mercadopago"];
+export const esMedioClub = (m: unknown): m is MedioClub => typeof m === "string" && (MEDIOS_CLUB as string[]).includes(m);
+/** Transferencia y Mercado Pago dejan comprobante: el kiosquero los verifica. El efectivo no se puede verificar. */
+export const esMedioDigital = (m: string | null | undefined) => m === "transferencia" || m === "mercadopago";
+export const nombreMedio = (m: string | null | undefined) => m === "transferencia" ? "transferencia" : m === "mercadopago" ? "Mercado Pago" : m === "efectivo" ? "efectivo" : "";
+export type ActividadClub = { evento: string; cliente_id: string; nombre: string; telefono: string; cantidad: number; cuando: string; rechazado: boolean; nuevo: boolean; medio?: MedioClub | null; verificado?: boolean | null };
 export type AjustesClub = { club_activo: boolean; club_max_por_dia: number | null; club_espera_min: number | null; club_hora_desde: string | null; club_hora_hasta: string | null };
 
 export const linkClub = (slug: string, origen = "") => `${origen.replace(/\/$/, "")}/${slug}/club`;
@@ -20,9 +42,17 @@ export const linkTarjeta = (token: string, origen = "") => `${origen.replace(/\/
 
 const horaAR = (fecha: Date) => new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Argentina/Buenos_Aires" }).format(fecha);
 
-/** Aviso push al kiosquero. Un solo aviso a la vez (tag): si llegan varios seguidos, el último reemplaza al anterior sin hacer ruido de más. */
-export function armarAvisoClub(a: { cliente: string; cantidad: number; nuevo: boolean }, cuando: Date = new Date()) {
+/** Aviso push al kiosquero. Un solo aviso a la vez (tag): si llegan varios seguidos, el último reemplaza al anterior sin hacer ruido de más.
+ *  Si el cliente dice que pagó por transferencia o Mercado Pago el aviso es distinto y no se pisa con los demás: hay un comprobante para mirar. */
+export function armarAvisoClub(a: { cliente: string; cantidad: number; nuevo: boolean; medio?: string | null }, cuando: Date = new Date()) {
   const n = a.cantidad === 1 ? "un sello" : `${a.cantidad} sellos`;
+  if (!a.nuevo && esMedioDigital(a.medio)) {
+    return {
+      title: `Verificá: ${a.cliente} dice que pagó por ${nombreMedio(a.medio)}`,
+      body: `${horaAR(cuando)} · Revisá el comprobante y confirmá el sello. Si no figura, rechazalo.`,
+      url: RUTA_CLUB_PANEL, tag: `club-verificar-${a.cliente}`.slice(0, 60),
+    };
+  }
   return {
     title: a.nuevo ? `${a.cliente} se sumó al club` : `${a.cliente} sumó ${n}`,
     body: `${horaAR(cuando)} · ¿Está en el local? Si no corresponde, rechazalo.`,
@@ -69,7 +99,7 @@ export function casilleros(sellos: number, meta: number | null, max = 20): { tot
 export const faltan = (sellos: number, meta: number | null) => (meta && sellos < meta ? meta - sellos : 0);
 
 /** Mensaje de WhatsApp para mandarle a un cliente el link de su tarjeta. */
-export const mensajeTarjeta = (local: string, link: string) => `¡Hola! Esta es tu tarjeta de sellos de ${local}. Abrila después de cada compra y tocá "Sumar mi compra": ${link}`;
+export const mensajeTarjeta = (local: string, link: string) => `¡Hola! Esta es tu tarjeta de sellos de ${local}. Abrila después de cada compra y elegí cómo pagaste para sumar tu sello: ${link}`;
 
 /** Aviso por WhatsApp cuando el cliente completó la tarjeta (lo manda el kiosquero con un toque; no hay envío automático). */
 export const mensajePremioListo = (nombre: string, local: string, premio: string) =>

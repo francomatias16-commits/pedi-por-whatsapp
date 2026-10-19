@@ -4,7 +4,7 @@ export interface Almacen { getItem(k: string): string | null; setItem(k: string,
 
 export type VentaPendiente = {
   offline_id: string; turno_id: string; fecha: string; items: { producto_id: string; cantidad: number; descuento_pct: number }[];
-  pagos: { medio: string; monto: number }[]; cliente_id: string | null; descuento_pct: number; total: number; intentos: number;
+  pagos: { medio: string; monto: number }[]; cliente_id: string | null; descuento_pct: number; descuento_monto?: number | null; total: number; intentos: number;
 };
 export type VentaRechazada = VentaPendiente & { motivo: string };
 export type Envio = { ok: true } | { ok: false; definitivo: boolean; mensaje: string };

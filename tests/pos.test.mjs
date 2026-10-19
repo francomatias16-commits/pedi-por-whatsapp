@@ -224,5 +224,14 @@ const venta = (id, cant = 1) => ({ offline_id: id, turno_id: "t", fecha: "2026-1
   a.setItem("pos-vinculo:k3", "{no es json"); eq("corrupto se descarta", R.leerVinculo(a, "k3", ahora), null);
   R.guardarVinculo(a, { token: "malo", kiosco: "k4", expira_at: ahora + 1e6 }); eq("token inválido guardado se descarta", R.leerVinculo(a, "k4", ahora), null);
 }
+// Descuento en pesos exacto (0049): mismos casos que supabase/tests/venta_monto_test.py.
+const F = await cargar("fidelidad.ts");
+eq("premio de $1.000 sobre $12.345 cobra $11.345", P.calcularVenta([L({ precio: 12345, cantidad: 1 })], [], 0, HOY, 1000).total, 11345);
+eq("333,33 sobre $3.500 cobra $3.166,67 (exacto)", P.calcularVenta([L({ precio: 1000, cantidad: 3 }), L({ producto_id: "x", precio: 500, cantidad: 1 })], [], 0, HOY, 333.33).total, 3166.67);
+eq("monto mayor al total se topa (cobra 0)", P.calcularVenta([L({ precio: 500, cantidad: 1 })], [], 0, HOY, 99999).total, 0);
+eq("sin monto sigue el porcentaje (10% de $1.000 = $900)", P.calcularVenta([L({ precio: 1000, cantidad: 1 })], [], 10, HOY).total, 900);
+eq("montoDePremio: premio de monto", F.montoDePremio({ tipo: "monto", valor: 500 }, 3000), 500);
+eq("montoDePremio: premio de producto usa el precio del producto", F.montoDePremio({ tipo: "producto", valor: null }, 3000, 800, 800), 800);
+eq("montoDePremio: porcentaje y libre no dan monto", [F.montoDePremio({ tipo: "pct", valor: 10 }, 3000), F.montoDePremio({ tipo: "libre", valor: null }, 3000)], [null, null]);
 console.log(fallos ? `\n${fallos} FALLAS` : "\npos: todo OK");
 process.exit(fallos ? 1 : 0);

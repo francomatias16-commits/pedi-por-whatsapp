@@ -157,6 +157,7 @@ input[type="search"] { min-height: 54px; font-size: 1.1rem; }
 .card { position: relative; margin: .75rem 0; padding: 1rem; background: var(--surface); border: 1.5px solid var(--ink); border-radius: var(--r); box-shadow: var(--sh-card); }
 .row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
 .card.row { flex-wrap: wrap; }
+.fila-sep { border-top: 1px solid var(--line); padding: .5rem 0; gap: .5rem; }
 .recibo { margin: .4rem 0; }
 .recibo .row { padding: .55rem 0; border-bottom: 1.5px dashed var(--line); }
 .recibo .row:last-child { border-bottom: 0; }
