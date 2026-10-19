@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { CLUB_TOKEN_RE, casilleros, claveTokenLocal, faltan, textoBloqueo, type Tarjeta } from "@/lib/club";
 import { mensajeErrorSql } from "@/lib/errores";
+import InstalarApp from "@/components/panel/InstalarApp";
 
 const dia = (s: string) => new Date(s).toLocaleDateString("es-AR", { day: "numeric", month: "short" });
 
@@ -77,6 +78,9 @@ export default function ClubTarjeta({ token, inicial }: { token: string; inicial
       {t.bloqueo && <p className="mut">{textoBloqueo(t.bloqueo)}</p>}
       {msg && <p role="status" aria-live="polite" className={msg.startsWith("¡Listo") ? "" : "alerta"}>{msg}</p>}
       {t.puede_sumar && <p className="mut">Tocá el botón solo después de pagar tu compra. El local ve cada sello que sumás.</p>}
+
+      {/* Descargar la tarjeta como app: botón nativo en Android/Chrome, pasos de Safari en iPhone. No aparece si ya está instalada. */}
+      <div style={{ marginTop: 16 }}><InstalarApp block /></div>
 
       {t.historial.length > 0 && (
         <details>

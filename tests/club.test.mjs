@@ -83,5 +83,8 @@ eq("completas: solo las que llegan a la meta, más sellos primero", C.conPremioL
 eq("completas: sin premio no hay lista", C.conPremioListo([{ nombre: "A", sellos_disponibles: 50 }], null), []);
 ok("el panel del club muestra las tarjetas completas", leer("../components/sellos/Club.tsx").includes("<PremiosListos"));
 
+// instalar la tarjeta como app
+ok("la tarjeta del cliente ofrece instalar la app", leer("../components/ClubTarjeta.tsx").includes("<InstalarApp"));
+
 if (fallos) { console.log(`✗ ${fallos} fallo(s)`); process.exit(1); }
 console.log("club OK");
