@@ -9,8 +9,9 @@ export type Bloqueo = { codigo: "club_inactivo" | "club_fuera_horario" | "club_l
 export type Tarjeta = {
   local: string; slug: string; whatsapp: string; cliente: string; sellos: number; premio: string | null; meta: number | null;
   listo: boolean; puede_sumar: boolean; bloqueo: Bloqueo | null; historial: { fecha: string; cantidad: number }[];
+  por_compra?: number; // sellos que suma hoy una compra, según las campañas activas del local (sellos dobles incluidos)
 };
-export type DatosClub = { nombre: string; slug: string; whatsapp: string; premio: string | null; meta: number | null };
+export type DatosClub = { nombre: string; slug: string; whatsapp: string; premio: string | null; meta: number | null; por_compra?: number; bienvenida?: number };
 export type ActividadClub = { evento: string; cliente_id: string; nombre: string; telefono: string; cantidad: number; cuando: string; rechazado: boolean; nuevo: boolean };
 export type AjustesClub = { club_activo: boolean; club_max_por_dia: number | null; club_espera_min: number | null; club_hora_desde: string | null; club_hora_hasta: string | null };
 
@@ -27,6 +28,16 @@ export function armarAvisoClub(a: { cliente: string; cantidad: number; nuevo: bo
     body: `${horaAR(cuando)} · ¿Está en el local? Si no corresponde, rechazalo.`,
     url: RUTA_CLUB_PANEL, tag: "club",
   };
+}
+
+/** Lo que promete el QR, siempre según lo que el kiosquero tiene configurado hoy. */
+export function textoPromesa(d: { premio: string | null; meta: number | null; por_compra?: number; bienvenida?: number }): string {
+  const por = Math.max(0, Math.floor(d.por_compra ?? 0)), bien = Math.max(0, Math.floor(d.bienvenida ?? 0));
+  const partes: string[] = [];
+  if (por > 0) partes.push(`Cada compra suma ${por} sello${por === 1 ? "" : "s"}.`);
+  if (bien > 0) partes.push(`Al crear tu tarjeta te regalamos ${bien} más.`);
+  if (d.premio && d.meta) partes.push(`Juntá ${d.meta} y llevate ${d.premio}.`);
+  return partes.join(" ");
 }
 
 /** Texto para el cliente cuando todavía no puede sumar. */

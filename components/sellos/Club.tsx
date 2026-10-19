@@ -75,9 +75,12 @@ export default function Club({ kiosco, premios, campanas, onCambio }: { kiosco: 
 
   async function rechazar(e: ActividadClub, rechazar: boolean) {
     setMsg("");
-    const { error } = await supabase.rpc("club_rechazar", { p_evento: e.evento, p_rechazar: rechazar });
+    const { data, error } = await supabase.rpc("club_rechazar", { p_evento: e.evento, p_rechazar: rechazar });
     if (error) return setMsg(mensajeErrorSql(error.message, "club"));
-    setMsg(rechazar ? `Rechazaste el sello de ${e.nombre}. Podés deshacerlo.` : `Volvió el sello de ${e.nombre}.`);
+    const descubierto = Number((data as { descubierto?: number } | null)?.descubierto ?? 0);
+    setMsg(rechazar
+      ? `Rechazaste el sello de ${e.nombre}. Podés deshacerlo.${descubierto > 0 ? ` Ojo: ya había canjeado un premio con ${descubierto === 1 ? "ese sello" : `${descubierto} de esos sellos`}; su saldo queda en 0.` : ""}`
+      : `Volvió el sello de ${e.nombre}.`);
     await cargar();
   }
 

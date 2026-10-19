@@ -77,7 +77,7 @@ export default function ClubTarjeta({ token, inicial }: { token: string; inicial
       <button className="btn-grande" onClick={sumar} disabled={ocupado || !t.puede_sumar}>{ocupado ? "Sumando…" : "Sumar mi compra"}</button>
       {t.bloqueo && <p className="mut">{textoBloqueo(t.bloqueo)}</p>}
       {msg && <p role="status" aria-live="polite" className={msg.startsWith("¡Listo") ? "" : "alerta"}>{msg}</p>}
-      {t.puede_sumar && <p className="mut">Tocá el botón solo después de pagar tu compra. El local ve cada sello que sumás.</p>}
+      {t.puede_sumar && <p className="mut">Tocá el botón solo después de pagar tu compra{t.por_compra ? ` y sumás ${t.por_compra} sello${t.por_compra === 1 ? "" : "s"}` : ""}. El local ve cada sello que sumás.</p>}
 
       {/* Descargar la tarjeta como app: botón nativo en Android/Chrome, pasos de Safari en iPhone. No aparece si ya está instalada. */}
       <div style={{ marginTop: 16 }}><InstalarApp block /></div>

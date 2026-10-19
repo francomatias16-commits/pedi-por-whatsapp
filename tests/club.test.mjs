@@ -86,5 +86,19 @@ ok("el panel del club muestra las tarjetas completas", leer("../components/sello
 // instalar la tarjeta como app
 ok("la tarjeta del cliente ofrece instalar la app", leer("../components/ClubTarjeta.tsx").includes("<InstalarApp"));
 
+// el QR y la tarjeta prometen lo que el kiosquero configuró (0042)
+eq("promesa: 1 por compra", C.textoPromesa({ premio: "Gaseosa", meta: 3, por_compra: 1 }), "Cada compra suma 1 sello. Juntá 3 y llevate Gaseosa.");
+eq("promesa: sellos dobles", C.textoPromesa({ premio: "Gaseosa", meta: 3, por_compra: 2 }), "Cada compra suma 2 sellos. Juntá 3 y llevate Gaseosa.");
+eq("promesa: con bienvenida", C.textoPromesa({ premio: "Café", meta: 5, por_compra: 1, bienvenida: 2 }), "Cada compra suma 1 sello. Al crear tu tarjeta te regalamos 2 más. Juntá 5 y llevate Café.");
+eq("promesa: sin campañas no promete sellos", C.textoPromesa({ premio: "Café", meta: 5, por_compra: 0 }), "Juntá 5 y llevate Café.");
+eq("promesa: sin premio ni datos", C.textoPromesa({ premio: null, meta: null }), "");
+const mig42 = leer("../supabase/migrations/0042_club_roles_aviso.sql");
+ok("0042: club_datos y la tarjeta devuelven por_compra", (mig42.match(/'por_compra'/g) || []).length === 2);
+ok("0042: el encargado puede ver y rechazar", (mig42.match(/es_miembro\(/g) || []).length >= 3);
+ok("0042: rechazar avisa descubierto y deja rastro", mig42.includes("'descubierto'") && mig42.includes("anulado_por"));
+ok("el QR de registro usa la promesa", leer("../components/ClubUnirse.tsx").includes("textoPromesa(datos)"));
+ok("el panel avisa cuando el sello rechazado ya se canjeó", leer("../components/sellos/Club.tsx").includes("descubierto"));
+ok("el test SQL del club existe", existsSync(new URL("../supabase/tests/club_test.py", import.meta.url)));
+
 if (fallos) { console.log(`✗ ${fallos} fallo(s)`); process.exit(1); }
 console.log("club OK");
