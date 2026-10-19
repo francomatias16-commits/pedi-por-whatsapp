@@ -1,6 +1,7 @@
 "use client";
 import type { Kiosco } from "@/lib/supabase";
 import { ETIQUETA_ROL, puedeConfigurarLocal, type Rol } from "@/lib/navegacion";
+import InstalarApp from "./InstalarApp";
 
 // Barra fija de arriba: nombre del kiosco, interruptor de la tienda (abierta/cerrada), ayuda y salir.
 export default function BarraSuperior({ kiosco, rol = "dueno", abierta, bloqueado, detalle, onInterruptor, onSalir, onAyuda }:
@@ -13,6 +14,7 @@ export default function BarraSuperior({ kiosco, rol = "dueno", abierta, bloquead
         <span className="int-texto"><b>{abierta ? "Tienda abierta" : "Tienda cerrada"}</b><small>{detalle}</small></span>
       </button>
       <span className="barra-acc">
+        <InstalarApp />
         <button type="button" className="sec" onClick={onAyuda}>¿Cómo se usa?</button>
         <button type="button" className="sec" onClick={onSalir}>Salir</button>
       </span>
