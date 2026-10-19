@@ -3,6 +3,8 @@ import { useConfirmar } from "@/components/ui/Confirmar";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase, type Kiosco } from "@/lib/supabase";
 import { linkWhatsApp, normalizarTelefonoAR } from "@/lib/whatsapp";
+import { linkTarjeta, mensajeTarjeta } from "@/lib/club";
+import { mensajeErrorSql } from "@/lib/errores";
 import { describirPremio, mensajeFidelidad, type Campana, type Premio } from "@/lib/fidelidad";
 
 type Cli = { id: string; nombre: string; telefono: string; sellos_disponibles: number; vence_at: string | null };
@@ -91,6 +93,12 @@ export default function ClientesSellos({ kiosco, campanas, premios }: { kiosco: 
     const { error } = await supabase.rpc("fidelidad_anular_canje", { p_canje: m.canje_id });
     setMsg(error ? mensajeFidelidad(error.message) : "Canje anulado"); await refrescar(c.id);
   }
+  async function enviarTarjeta(c: Cli) {
+    if (!await confirmar({ titulo: `¿Mandarle a ${c.nombre} su tarjeta del club? Si ya tenía una, la anterior deja de funcionar.`, confirmar: "Sí, mandar", peligro: false })) return;
+    const { data, error } = await supabase.rpc("club_reenviar", { p_cliente: c.id });
+    if (error || typeof data !== "string") return setMsg(mensajeErrorSql(error?.message, "club"));
+    window.open(linkWhatsApp(normalizarTelefonoAR(c.telefono), mensajeTarjeta(kiosco.nombre, linkTarjeta(data, location.origin))), "_blank", "noopener");
+  }
   async function aplicarAjuste(c: Cli) {
     if (!ajuste) return;
     const n = Number(ajuste.cant.replace(",", "."));
@@ -130,6 +138,7 @@ export default function ClientesSellos({ kiosco, campanas, premios }: { kiosco: 
               {canjeables.map((p) => <button key={p.id} onClick={() => canjear(c, p)}>Canjear: {p.nombre} ({p.costo_sellos})</button>)}
               {manuales.map((m) => <button key={m.id} className="sec" onClick={() => dar(c, m.id)}>+{m.sellos} {m.nombre}</button>)}
               <button className="sec" onClick={() => setAjuste(ajuste?.id === c.id ? null : { id: c.id, cant: "1", motivo: "" })}>Ajustar</button>
+              <button className="sec" onClick={() => enviarTarjeta(c)}>Mandar tarjeta del club</button>
               {canjeables.length > 0 && (
                 <a className="btn sec" href={linkWhatsApp(normalizarTelefonoAR(c.telefono), `Hola ${c.nombre}! Tenés ${c.sellos_disponibles} sellos en ${kiosco.nombre} y ya podés canjear: ${canjeables.map((p) => p.nombre).join(", ")}. ¡Pasá cuando quieras!`)}>Avisar por WhatsApp</a>
               )}

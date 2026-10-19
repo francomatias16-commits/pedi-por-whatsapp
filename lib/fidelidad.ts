@@ -189,6 +189,30 @@ export function pctDePremio(p: Pick<Premio, "tipo" | "valor">, totalSinPremio: n
   return Math.min(100, Math.max(0, Math.round(pct * 100) / 100));
 }
 
+// ---- Promo de horas flojas: un atajo para crear/editar una campaña "multiplicador" con días y horario (el motor de la 0017 ya la aplica). ----
+export const NOMBRE_HORAS_FLOJAS = "Horas flojas";
+export type FormHorasFlojas = { dias: number[]; desde: string; hasta: string; mult: string };
+export const HORAS_FLOJAS_VACIA: FormHorasFlojas = { dias: [2], desde: "15:00", hasta: "18:00", mult: "2" };
+export const PRESETS_HORAS_FLOJAS: { titulo: string; form: FormHorasFlojas }[] = [
+  { titulo: "Martes de 15 a 18", form: { dias: [2], desde: "15:00", hasta: "18:00", mult: "2" } },
+  { titulo: "Lunes a jueves de 15 a 18", form: { dias: [1, 2, 3, 4], desde: "15:00", hasta: "18:00", mult: "2" } },
+  { titulo: "Todos los días de 15 a 17", form: { dias: [0, 1, 2, 3, 4, 5, 6], desde: "15:00", hasta: "17:00", mult: "2" } },
+];
+export const esHorasFlojas = (c: Pick<Campana, "tipo" | "nombre">) => c.tipo === "multiplicador" && c.nombre === NOMBRE_HORAS_FLOJAS;
+export function formCampanaHorasFlojas(h: FormHorasFlojas): FormCampana {
+  return { ...CAMPANA_VACIA, nombre: NOMBRE_HORAS_FLOJAS, tipo: "multiplicador", multiplicador: h.mult, dias_semana: h.dias, usar_horario: true, hora_desde: h.desde, hora_hasta: h.hasta };
+}
+export function validarHorasFlojas(h: FormHorasFlojas): string | null {
+  if (h.dias.length === 0) return "Elegí al menos un día.";
+  if (h.mult !== "2" && h.mult !== "3") return "Elegí sellos dobles o triples.";
+  return validarCampana(formCampanaHorasFlojas(h));
+}
+export function horasFlojasDesdeCampana(c: Campana): FormHorasFlojas {
+  return { dias: c.dias_semana && c.dias_semana.length ? [...c.dias_semana] : [0, 1, 2, 3, 4, 5, 6], desde: hhmm(c.hora_desde) || "15:00", hasta: hhmm(c.hora_hasta) || "18:00", mult: String(c.multiplicador ?? 2) };
+}
+/** Los sellos dobles multiplican lo que dan las demás campañas: sin una base activa (por compra, monto, producto o categoría) no suman nada. */
+export const hayBaseDeSellos = (cs: Pick<Campana, "tipo" | "activa">[]) => cs.some((c) => c.activa && ["visita", "monto", "producto", "categoria"].includes(c.tipo));
+
 export function mensajeFidelidad(m: string | undefined): string {
   return mensajeErrorSql(m, "fidelidad", "No se pudo completar la operación. Probá de nuevo.");
 }

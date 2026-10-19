@@ -1,5 +1,5 @@
 {
-  "name": "fluxo",
+  "name": "go-fluxo",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -15,8 +15,10 @@
     "test:fotos-limpieza": "node tests/fotos-limpieza.test.mjs",
     "test:fotos-lote": "node tests/fotos-lote.test.mjs",
     "test:franjas": "node tests/franjas.test.mjs",
-    "test": "npm run test:importar && npm run test:horario && npm run test:fotos && npm run test:fotos-sug && npm run test:fotos-desc && npm run test:fotos-limpieza && npm run test:fotos-lote && npm run test:push && npm run test:pos && npm run test:compras && npm run test:etiquetas && npm run test:fidelidad && npm run test:reposicion && npm run test:margen && npm run test:fiado && npm run test:fuga && npm run test:modificados && npm run test:conteo && npm run test:pedidos && npm run test:errores && npm run test:navegacion && npm run test:cierre && npm run test:pagos && npm run test:roles && npm run test:qr && npm run test:seguimiento && npm run test:zonas && npm run test:franjas",
+    "test": "npm run test:importar && npm run test:horario && npm run test:fotos && npm run test:fotos-sug && npm run test:fotos-desc && npm run test:fotos-limpieza && npm run test:fotos-lote && npm run test:push && npm run test:pos && npm run test:compras && npm run test:etiquetas && npm run test:fidelidad && npm run test:reposicion && npm run test:margen && npm run test:fiado && npm run test:fuga && npm run test:modificados && npm run test:conteo && npm run test:pedidos && npm run test:errores && npm run test:navegacion && npm run test:cierre && npm run test:pagos && npm run test:roles && npm run test:qr && npm run test:seguimiento && npm run test:zonas && npm run test:franjas && npm run test:club && npm run test:auditoria",
     "test:navegacion": "node tests/navegacion.test.mjs",
+    "test:club": "node tests/club.test.mjs",
+    "test:auditoria": "node tests/auditoria.test.mjs",
     "test:push": "node tests/push.test.mjs",
     "test:pos": "node tests/pos.test.mjs",
     "test:compras": "node tests/compras.test.mjs",

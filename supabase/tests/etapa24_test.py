@@ -72,12 +72,12 @@ n_tel = [0]
 def crear(items, medio="mercadopago", slug="kiosco-a"):
     n_tel[0] += 1
     as_("anon")
-    r = one("select crear_pedido(%s,'Ana',%s,'retiro',null,null,%s::jsonb,%s)", (slug, f"54934155520{n_tel[0]:02d}", json.dumps([{"producto_id": prod[k], "cantidad": c} for k, c in items]), medio))
+    r = one("select crear_pedido(%s,'Ana',%s,'retiro',null,null,%s::jsonb,null::uuid,%s)", (slug, f"54934155520{n_tel[0]:02d}", json.dumps([{"producto_id": prod[k], "cantidad": c} for k, c in items]), medio))
     as_("postgres"); return r
 def intento_crear(items, medio="mercadopago"):
     n_tel[0] += 1
     as_("anon")
-    e = fails("select crear_pedido('kiosco-a','Ana',%s,'retiro',null,null,%s::jsonb,%s)", (f"54934155520{n_tel[0]:02d}", json.dumps([{"producto_id": prod[k], "cantidad": c} for k, c in items]), medio))
+    e = fails("select crear_pedido('kiosco-a','Ana',%s,'retiro',null,null,%s::jsonb,null::uuid,%s)", (f"54934155520{n_tel[0]:02d}", json.dumps([{"producto_id": prod[k], "cantidad": c} for k, c in items]), medio))
     as_("postgres"); return e
 def confirmar(pid, pay, monto, estado="aprobado", moneda="ARS"):
     as_("postgres")

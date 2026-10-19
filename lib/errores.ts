@@ -8,6 +8,16 @@
 export type ParError = [string, string];
 
 export const ERRORES_SQL: ParError[] = [
+  ["club_no_disponible", "Este local no tiene el club activo."],
+  ["club_nombre_invalido", "Escribí tu nombre."],
+  ["club_telefono_invalido", "Revisá tu número de teléfono."],
+  ["club_demasiadas_altas", "Hay muchos registros seguidos. Probá en unos minutos."],
+  ["club_token_invalido", "No encontramos tu tarjeta. Escaneá de nuevo el QR del local."],
+  ["club_limite_dia", "Hoy ya sumaste tu sello. ¡Te esperamos mañana!"],
+  ["club_espera", "Todavía no podés sumar otro sello. Probá en un rato."],
+  ["club_fuera_horario", "Ahora no se suman sellos. Probá en el horario del local."],
+  ["club_inactivo", "El club está en pausa por ahora."],
+  ["club_sin_sellos", "Hoy no hay sellos para sumar. Preguntale al local."],
   ["baja_fuera_de_orden", "Para dar de baja vencidos, primero descontá el lote que vence antes."],
   ["cantidad_mayor_al_lote", "La cantidad es mayor a lo que queda en ese lote."],
   ["lote_mayor_al_stock", "El lote no puede tener más unidades que el stock del producto."],
@@ -211,6 +221,9 @@ export const ERRORES_CONTEXTO = {
   ["sin_cliente", "Este pedido no tiene un cliente asociado. Anotalo a mano en Fiado."],
   ["estado_invalido", "Primero confirmá el pedido."],
   ["monto_invalido", "El pedido no tiene un total para anotar."],
+  ],
+  club: [
+  ["no_autorizado", "No tenés permiso para el club de este local."],
   ],
 } satisfies Record<string, ParError[]>;
 

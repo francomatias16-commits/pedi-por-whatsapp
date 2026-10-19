@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Fluxo",
-    short_name: "Fluxo",
+    name: "Go Fluxo",
+    short_name: "Go Fluxo",
     description: "Catálogo, pedidos y fiado para tu kiosco",
     start_url: "/panel",
     scope: "/",

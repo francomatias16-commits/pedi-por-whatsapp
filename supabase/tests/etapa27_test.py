@@ -71,7 +71,7 @@ def pedido(modalidad="retiro", slug="kiosco-a"):
     n_tel[0] += 1
     as_("anon")
     dire = "Calle 123" if modalidad == "envio" else None
-    return jsn(one("select crear_pedido(%s,'Ana Pérez',%s,%s,%s,'sin sal',%s::jsonb,'efectivo')", (slug, f"54934155530{n_tel[0]:02d}", modalidad, dire, json.dumps([{"producto_id": p1, "cantidad": 1}]))))["pedido_id"]
+    return jsn(one("select crear_pedido(%s,'Ana Pérez',%s,%s,%s,'sin sal',%s::jsonb,null::uuid,'efectivo')", (slug, f"54934155530{n_tel[0]:02d}", modalidad, dire, json.dumps([{"producto_id": p1, "cantidad": 1}]))))["pedido_id"]
 def token(pid):
     as_("postgres"); return one("select token_seguimiento from pedidos where id=%s", (pid,))
 def seg(tk):

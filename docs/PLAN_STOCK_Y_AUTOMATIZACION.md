@@ -1,6 +1,6 @@
 # Plan de implementación: stock automático y funciones a replicar desde el proyecto de GitHub
 
-**Proyecto destino:** "Fluxo" (Next.js 14 + Supabase, kioscos y almacenes).
+**Proyecto destino:** "Go Fluxo" (Next.js 14 + Supabase, kioscos y almacenes).
 **Proyecto de referencia:** `_github.zip` (distrib / Fluxo, ERP para distribuidoras).
 **Alcance del análisis:** stock, compras, proveedores, automatizaciones, crons y operación del repo. No se leyeron los ~3.500 archivos ni se ejecutaron tests; las rutas citadas son las que se revisaron.
 

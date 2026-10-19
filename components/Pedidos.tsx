@@ -95,7 +95,7 @@ export default function Pedidos({ kiosco, rol = "dueno" }: { kiosco: Kiosco; rol
     const t = setInterval(() => { tick++; if (document.visibilityState === "visible" && (!enVivoRef.current || tick % 4 === 0)) cargar(); }, 15000);
     const onVis = () => { if (document.visibilityState === "visible") cargar(); };
     document.addEventListener("visibilitychange", onVis);
-    return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVis); document.title = "Fluxo"; };
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVis); document.title = "Go Fluxo"; };
   }, [cargar]);
 
   // Realtime: el pedido aparece al instante (la base solo envía los del propio kiosco, por RLS).
