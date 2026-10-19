@@ -12,6 +12,7 @@ import Historial from "./caja/Historial";
 import Favoritos from "./caja/Favoritos";
 import BuscarVentas from "./caja/BuscarVentas";
 import Promos from "./caja/Promos";
+import { exigeSupervisor, puedeAdministrarCaja, puedeConfigurarLocal, type Rol } from "@/lib/navegacion";
 import ConfigPos from "./caja/ConfigPos";
 import { reconectarImpresora } from "@/lib/pos/impresora";
 
@@ -28,7 +29,7 @@ const aTurno = (t: Turno): Turno => ({
 });
 
 // Caja = punto de venta completo: apertura de caja, venta con cobro mixto, movimientos, cierre y reporte Z.
-export default function Caja({ kiosco }: { kiosco: Kiosco }) {
+export default function Caja({ kiosco, rol = "dueno" }: { kiosco: Kiosco; rol?: Rol }) {
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [resumen, setResumen] = useState<Resumen | null>(null);
   const [productos, setProductos] = useState<ProductoPos[]>([]);
@@ -45,6 +46,7 @@ export default function Caja({ kiosco }: { kiosco: Kiosco }) {
   const [refresco, setRefresco] = useState(0);
   const [masAbierto, setMasAbierto] = useState(false);
 
+  const enMas = EN_MAS.filter(([k]) => (k === "config" ? puedeConfigurarLocal(rol) : k === "favoritos" || k === "promos" ? puedeAdministrarCaja(rol) : true));
   const turno = useMemo(() => turnos.find((t) => t.estado === "abierto") ?? null, [turnos]);
 
   const cargarTurnos = useCallback(async () => {
@@ -60,14 +62,16 @@ export default function Caja({ kiosco }: { kiosco: Kiosco }) {
       supabase.from("clientes_saldo").select("id,nombre,telefono,saldo").eq("kiosco_id", kiosco.id).order("nombre"),
       supabase.from("pos_favoritos").select("producto_id,orden").eq("kiosco_id", kiosco.id).order("orden"),
       supabase.from("pos_promos").select("id,nombre,tipo,producto_id,categoria,lleva,paga,pct,desde,hasta,activa").eq("kiosco_id", kiosco.id).eq("activa", true),
-      supabase.from("pos_config").select("sonido,imprimir_auto,abrir_cajon,ticket_encabezado,ticket_pie,ticket_ancho,tiene_pin,pin_anular,pin_devolucion").eq("kiosco_id", kiosco.id).maybeSingle(),
+      // Por RPC: pos_config guarda el hash del PIN y solo la lee el dueño; el cajero y el encargado reciben estas columnas sin secretos.
+      supabase.rpc("pos_config_publica", { p_kiosco: kiosco.id }),
     ]);
     if (pm.data) setPromos(pm.data.map((x) => ({ ...x, pct: x.pct == null ? null : Number(x.pct) })) as Promo[]);
-    if (cf.data) setConfig({ ...CONFIG_POR_DEFECTO, ...(cf.data as Partial<PosConfig>) });
+    // El cajero siempre necesita un supervisor para anular o devolver (lo exige la base); acá se pide el PIN aunque el local lo tenga apagado.
+    if (cf.data) setConfig({ ...CONFIG_POR_DEFECTO, ...(cf.data as Partial<PosConfig>), ...(exigeSupervisor(rol) ? { pin_anular: true, pin_devolucion: true } : {}) });
     if (p.data) setProductos(p.data.map((x) => ({ ...x, precio: Number(x.precio), stock: Number(x.stock ?? 0), stock_controlado: !!x.stock_controlado, vendido_por_peso: !!x.vendido_por_peso, permite_sin_stock: !!x.permite_sin_stock, plu: x.plu ?? null })) as ProductoPos[]);
     if (c.data) setClientes(c.data.map((x) => ({ ...x, saldo: Number(x.saldo) })) as Cliente[]);
     if (f.data) setFavoritos(f.data.map((x) => x.producto_id as string));
-  }, [kiosco.id]);
+  }, [kiosco.id, rol]);
 
   const cargarResumen = useCallback(async () => {
     if (!turno) { setResumen(null); return; }
@@ -133,11 +137,11 @@ export default function Caja({ kiosco }: { kiosco: Kiosco }) {
         <span className="caja-estado"><i aria-hidden="true" /> Caja abierta · desde {fecha(turno.abierto_at)} · arrancaste con {peso(turno.monto_inicial)}</span>
         <nav className="pos-tabs" aria-label="Secciones de la caja">
           {PRINCIPALES.map(([k, label]) => (<button key={k} className={seccion === k ? "on" : ""} aria-current={seccion === k ? "page" : undefined} onClick={() => { setSeccion(k); setMasAbierto(false); }}>{label}</button>))}
-          <button type="button" className={EN_MAS.some(([k]) => k === seccion) || masAbierto ? "on" : ""} aria-expanded={masAbierto} onClick={() => setMasAbierto((v) => !v)}>Más ▾</button>
+          <button type="button" className={enMas.some(([k]) => k === seccion) || masAbierto ? "on" : ""} aria-expanded={masAbierto} onClick={() => setMasAbierto((v) => !v)}>Más ▾</button>
         </nav>
         {masAbierto && (
           <div className="pos-mas" role="group" aria-label="Más opciones de la caja">
-            {EN_MAS.map(([k, label]) => (<button key={k} type="button" className={seccion === k ? "on" : "sec"} onClick={() => { setSeccion(k); setMasAbierto(false); }}>{label}</button>))}
+            {enMas.map(([k, label]) => (<button key={k} type="button" className={seccion === k ? "on" : "sec"} onClick={() => { setSeccion(k); setMasAbierto(false); }}>{label}</button>))}
           </div>
         )}
       </div>
@@ -146,7 +150,7 @@ export default function Caja({ kiosco }: { kiosco: Kiosco }) {
       <div hidden={seccion !== "venta"}>
         {aviso && <p className="pos-aviso" role="status">{aviso}</p>}
         <PosVenta kiosco={kiosco} turno={turno} productos={productos} favoritos={favoritos} clientes={clientes} promos={promos} config={config}
-          activo={seccion === "venta"} onVendida={alCambio} onIr={irA} />
+          activo={seccion === "venta"} onVendida={alCambio} onIr={irA} puedeCargarStock={puedeAdministrarCaja(rol)} />
       </div>
       {seccion === "ventas" && resumen && <VentasTurno kiosco={kiosco} resumen={resumen} abierto config={config} onCambio={alCambio} />}
       {seccion === "buscar" && <BuscarVentas kiosco={kiosco} config={config} turnoAbierto onCambio={alCambio} />}

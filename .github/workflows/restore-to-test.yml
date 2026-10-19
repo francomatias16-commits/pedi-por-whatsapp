@@ -1,0 +1,75 @@
+name: Restore a proyecto de prueba
+# Prueba que el último backup se pueda restaurar. Solo manual (workflow_dispatch).
+# Requiere SUPABASE_TEST_DB_URL: Session pooler de un proyecto de PRUEBA, nunca el de producción.
+# Antes de restaurar se borra el esquema public del destino de prueba (el dump trae su propio CREATE SCHEMA public).
+# Se omiten TRIGGERS y CLAVES FORÁNEAS a propósito:
+#  - Los triggers (p. ej. el webhook de pedidos) llamarían a la URL de producción con cada insert de prueba,
+#    y el proyecto de prueba no tiene el esquema supabase_functions.
+#  - Las claves foráneas a auth.users fallan porque el dump solo trae public y auth está vacío en la prueba.
+# Por eso la prueba valida tablas y datos (comparación de tablas y conteos), NO triggers ni claves foráneas.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar secretos y que el destino no sea producción
+        env:
+          PROD_URL: "${{ secrets.SUPABASE_DB_URL }}"
+          TEST_URL: "${{ secrets.SUPABASE_TEST_DB_URL }}"
+        run: |
+          test -n "$TEST_URL" || { echo "Falta el secreto SUPABASE_TEST_DB_URL"; exit 1; }
+          test -n "$PROD_URL" || { echo "Falta el secreto SUPABASE_DB_URL (se usa solo para comparar conteos)"; exit 1; }
+          if [ "$TEST_URL" = "$PROD_URL" ]; then echo "El destino de prueba es igual a producción. Abortando."; exit 1; fi
+          if printf '%s' "$TEST_URL" | grep -q "ydhdbkkubllfdksusyil"; then echo "El destino apunta al proyecto de producción. Abortando."; exit 1; fi
+      - name: Instalar cliente de Postgres 17
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq postgresql-client-17
+      - name: Bajar el último backup exitoso
+        env:
+          GH_TOKEN: "${{ github.token }}"
+        run: |
+          RUN_ID=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow backup-supabase.yml --status success --limit 1 --json databaseId -q '.[0].databaseId')
+          test -n "$RUN_ID" || { echo "No hay backups exitosos para restaurar"; exit 1; }
+          echo "Backup del run $RUN_ID"
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --dir backup-src
+          test -f backup-src/backup.dump || { echo "El artefacto no contiene backup.dump"; find backup-src; exit 1; }
+          mv backup-src/backup.dump ./backup.dump
+          ls -lh backup.dump
+      - name: Restaurar en el proyecto de prueba
+        env:
+          TEST_URL: "${{ secrets.SUPABASE_TEST_DB_URL }}"
+        run: |
+          set -e
+          export PATH="/usr/lib/postgresql/17/bin:$PATH"
+          OMITIR='^[0-9]+; [0-9]+ [0-9]+ (TRIGGER|EVENT TRIGGER|FK CONSTRAINT) '
+          pg_restore -l backup.dump > dump.list
+          echo "Entradas del dump: $(wc -l < dump.list). Omitidas (triggers y claves foráneas): $(grep -c -E "$OMITIR" dump.list || true)"
+          grep -v -E "$OMITIR" dump.list > restore.list
+          psql "$TEST_URL" -v ON_ERROR_STOP=1 -c "drop schema if exists public cascade"
+          pg_restore --no-owner --no-privileges --exit-on-error -L restore.list --dbname "$TEST_URL" backup.dump
+          echo "Restauración terminada."
+      - name: Comparar tablas y conteos con producción
+        env:
+          PROD_URL: "${{ secrets.SUPABASE_DB_URL }}"
+          TEST_URL: "${{ secrets.SUPABASE_TEST_DB_URL }}"
+        run: |
+          set -e
+          export PATH="/usr/lib/postgresql/17/bin:$PATH"
+          LISTA="select table_name from information_schema.tables where table_schema='public' and table_type='BASE TABLE' order by 1"
+          psql "$PROD_URL" -At -c "$LISTA" > tablas_prod.txt
+          psql "$TEST_URL" -At -c "$LISTA" > tablas_test.txt
+          if ! diff -u tablas_prod.txt tablas_test.txt; then echo "Las tablas no coinciden entre producción y el destino de prueba"; exit 1; fi
+          echo "Tablas: $(wc -l < tablas_test.txt) (coinciden)"
+          # Conteos: producción puede haber cambiado desde el backup, así que se muestran para revisar, no se exigen iguales.
+          while read -r t; do
+            p=$(psql "$PROD_URL" -At -c "select count(*) from public.\"$t\"")
+            q=$(psql "$TEST_URL" -At -c "select count(*) from public.\"$t\"")
+            echo "$t  prod=$p  prueba=$q"
+          done < tablas_test.txt

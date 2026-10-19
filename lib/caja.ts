@@ -87,6 +87,7 @@ export const ERRORES: [string, string][] = [
   ["devolucion_excede_cuenta_corriente", "No se puede devolver a cuenta corriente más de lo que se cobró por ahí."],
   ["pin_invalido", "El PIN tiene que ser de 4 a 8 números."],
   ["sangria_excede_efectivo", "No hay tanto efectivo en la caja para retirar."],
+  ["qr_sin_cobro", "Esa venta dice QR pero no hay un cobro aprobado por ese monto. Cobrá primero con \"Cobrar con QR\" o elegí otro medio."],
 ];
 export const mensajeError = (m: string) => ERRORES.find(([k]) => m.includes(k))?.[1] ?? "No se pudo completar la operación.";
 export const num = (s: string) => { const n = Number(String(s).replace(",", ".")); return Number.isFinite(n) ? n : 0; };

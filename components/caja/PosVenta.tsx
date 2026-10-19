@@ -17,6 +17,8 @@ import Escaner from "../Escaner";
 import VincularCelular from "./VincularCelular";
 import { useVinculoCelular } from "./useVinculoCelular";
 import CobroModal from "./CobroModal";
+import QrSinVenta from "./QrSinVenta";
+import { useQrCaja } from "./useQrCaja";
 import CargaStockRapida from "./CargaStockRapida";
 import Ticket, { type TicketData } from "./Ticket";
 
@@ -31,9 +33,9 @@ const AYUDA: [string, string][] = [
 ];
 const enCampoDeTexto = () => { const a = document.activeElement as HTMLElement | null; return !!a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA" || a.tagName === "SELECT" || a.isContentEditable); };
 
-export default function PosVenta({ kiosco, turno, productos, favoritos, clientes, promos, config, activo, onVendida, onIr }: {
+export default function PosVenta({ kiosco, turno, productos, favoritos, clientes, promos, config, activo, onVendida, onIr, puedeCargarStock = true }: {
   kiosco: Kiosco; turno: Turno; productos: ProductoPos[]; favoritos: string[]; clientes: Cliente[]; promos: Promo[]; config: PosConfig;
-  activo: boolean; onVendida: () => void; onIr: (d: Destino) => void;
+  activo: boolean; onVendida: () => void; onIr: (d: Destino) => void; puedeCargarStock?: boolean;
 }) {
   const [lineas, setLineas] = useState<LineaCarrito[]>([]);
   const [descPct, setDescPct] = useState("");
@@ -45,6 +47,7 @@ export default function PosVenta({ kiosco, turno, productos, favoritos, clientes
   const [filtroCliente, setFiltroCliente] = useState("");
   const [espera, setEspera] = useState<Espera[]>([]);
   const [cobrando, setCobrando] = useState(false);
+  const qr = useQrCaja(kiosco.id);
   const [ticket, setTicket] = useState<TicketData | null>(null);
   const [ayuda, setAyuda] = useState(false);
   const [escaneando, setEscaneando] = useState(false);
@@ -192,7 +195,7 @@ export default function PosVenta({ kiosco, turno, productos, favoritos, clientes
     const enviado = await enviarAImpresora(config.imprimir_auto ? ticketEscPos(t, config.ticket_ancho, { cajon: abre }) : pulsoCajon());
     if (!enviado && config.imprimir_auto) setTimeout(() => window.print(), 300);
   };
-  const terminarVenta = () => { setCobrando(false); setLineas([]); setDescPct(""); setCliente(null); setMsg(""); sonar("venta"); };
+  const terminarVenta = () => { setCobrando(false); setLineas([]); setDescPct(""); setCliente(null); setMsg(""); sonar("venta"); void qr.refrescar(); };
 
   /** Después de cobrar: registra el canje (si hubo) y avisa cuántos sellos ganó el cliente. Si falla, la venta ya está hecha: se avisa. */
   async function cierreFidelidad(cli: Cliente | null, pre: Premio | null, ventaId: string) {
@@ -395,8 +398,9 @@ export default function PosVenta({ kiosco, turno, productos, favoritos, clientes
             </div>
           )}
         </div>
+        {qr.activo && <QrSinVenta cobros={qr.sinVenta} />}
         {msg && <p className="pos-error" role="alert">{msg}</p>}
-        {faltante && !cargando && <button className="sec" style={{ marginBottom: 8 }} onClick={() => setCargando(faltante)}>Cargar stock de {faltante.nombre} ahora</button>}
+        {faltante && !cargando && puedeCargarStock && <button className="sec" style={{ marginBottom: 8 }} onClick={() => setCargando(faltante)}>Cargar stock de {faltante.nombre} ahora</button>}
         {favs.length > 0 && (
           <div className="pos-favoritos" aria-label="Favoritos">
             {favs.map((p) => (<button type="button" key={p.id} className="pos-fav" onClick={() => agregar(p)}><span>{p.nombre}</span><b className="mono">{peso(p.precio)}</b></button>))}
@@ -528,7 +532,8 @@ export default function PosVenta({ kiosco, turno, productos, favoritos, clientes
             agregar(p); // vuelve al carrito; por peso abre el cuadro de peso
           }} />
       )}
-      {cobrando && <CobroModal total={tot.total} cliente={cliente} onCancelar={() => { setCobrando(false); inputProd.current?.focus(); }} onConfirmar={confirmarCobro} />}
+      {cobrando && <CobroModal total={tot.total} cliente={cliente} onCancelar={() => { setCobrando(false); inputProd.current?.focus(); }} onConfirmar={confirmarCobro}
+        qr={{ kioscoId: kiosco.id, turnoId: turno.id, activo: qr.activo, sinVenta: qr.sinVenta, onCambio: () => void qr.refrescar() }} />}
       {ticket && <Ticket t={ticket} ancho={config.ticket_ancho} onCerrar={() => { setTicket(null); setTimeout(() => inputProd.current?.focus(), 0); }} />}
       {verVinculo && <VincularCelular estado={vinculo.estado} url={vinculo.url} error={vinculo.error} ultimo={vinculo.ultimo}
         onCerrarVinculo={() => { vinculo.cerrar(); setVerVinculo(false); }} onOcultar={() => { setVerVinculo(false); setTimeout(() => inputProd.current?.focus(), 0); }} />}

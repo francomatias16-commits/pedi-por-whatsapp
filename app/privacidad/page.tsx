@@ -36,7 +36,7 @@ export default function Privacidad() {
       <p>Para que no tengas que volver a cargarlos, guardamos en tu navegador (almacenamiento local) tu carrito y tus datos de contacto. Podés borrarlos desde los ajustes del navegador. El panel del comercio guarda la sesión iniciada. No usamos cookies de publicidad ni de seguimiento.</p>
 
       <h2>6. Cuánto tiempo los conservamos</h2>
-      <p>Mientras el comercio use el servicio, o hasta que se pida la supresión de los datos. Si cerrás tu cuenta de comercio, podés pedirnos que eliminemos tus datos y los de tu local.</p>
+      <p>Mientras el comercio use el servicio, o hasta que se pida la supresión de los datos. Si das de baja tu cuenta de comercio desde Mi negocio, la tienda se cierra enseguida y borramos los datos de tu local a los 30 días (hasta entonces podés arrepentirte). Antes de eso podés bajar una copia de tus datos desde la misma pantalla.</p>
 
       <h2>7. Tus derechos</h2>
       <p>Según la Ley 25.326 de Protección de los Datos Personales, tenés derecho a acceder a tus datos, rectificarlos, actualizarlos y pedir su supresión. El acceso es gratuito y puede ejercerse en intervalos no inferiores a seis meses, salvo que acredites un interés legítimo.</p>

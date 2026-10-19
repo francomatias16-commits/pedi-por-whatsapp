@@ -1,8 +1,9 @@
 // Recibe el INSERT de `pedidos` desde un Database Webhook de Supabase y avisa a los celulares del kiosco.
+// Los pedidos que esperan pago online NO avisan acá: avisan cuando el pago se aprueba (webhook de Mercado Pago).
 import { NextResponse } from "next/server";
-import webpush from "web-push";
 import { createClient } from "@supabase/supabase-js";
 import { armarAvisoPedido } from "@/lib/push";
+import { avisarKiosco } from "@/lib/push-envio";
 
 export const runtime = "nodejs";
 
@@ -16,31 +17,17 @@ export async function POST(req: Request) {
   if (payload?.type !== "INSERT" || payload?.table !== "pedidos" || !pedido?.kiosco_id) {
     return NextResponse.json({ ok: true, ignorado: true });
   }
+  const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 
-  const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-    auth: { persistSession: false },
-  });
-  webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT ?? "mailto:hola@pedi.app",
-    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-    process.env.VAPID_PRIVATE_KEY!,
-  );
+  // El pedido online nace esperando pago (pago_estado = pendiente): el aviso sale cuando se aprueba el pago.
+  // Se vuelve a leer el estado real por si cambió entre el INSERT y este llamado.
+  const { data: actual, error: errLeer } = await admin.from("pedidos").select("pago_estado").eq("id", pedido.id).maybeSingle();
+  if (errLeer) return NextResponse.json({ error: "db" }, { status: 500 });
+  if (actual?.pago_estado === "pendiente") return NextResponse.json({ ok: true, esperando_pago: true });
 
-  const { data: subs, error } = await admin
-    .from("push_suscripciones").select("id,endpoint,p256dh,auth_secret").eq("kiosco_id", pedido.kiosco_id);
-  if (error) return NextResponse.json({ error: "db" }, { status: 500 });
-
-  const aviso = JSON.stringify(armarAvisoPedido(pedido));
-  let enviados = 0;
-  await Promise.all((subs ?? []).map(async (s) => {
-    try {
-      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth_secret } }, aviso);
-      enviados++;
-    } catch (e: unknown) {
-      // 404/410: el navegador revocó la suscripción; la borramos para no insistir.
-      const code = (e as { statusCode?: number })?.statusCode;
-      if (code === 404 || code === 410) await admin.from("push_suscripciones").delete().eq("id", s.id);
-    }
-  }));
-  return NextResponse.json({ enviados });
+  try {
+    return NextResponse.json({ enviados: await avisarKiosco(admin, pedido.kiosco_id, armarAvisoPedido(pedido)) });
+  } catch {
+    return NextResponse.json({ error: "db" }, { status: 500 });
+  }
 }

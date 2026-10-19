@@ -1,13 +1,14 @@
 "use client";
 import type { Kiosco } from "@/lib/supabase";
+import { ETIQUETA_ROL, puedeConfigurarLocal, type Rol } from "@/lib/navegacion";
 
 // Barra fija de arriba: nombre del kiosco, interruptor de la tienda (abierta/cerrada), ayuda y salir.
-export default function BarraSuperior({ kiosco, abierta, bloqueado, detalle, onInterruptor, onSalir, onAyuda }:
-  { kiosco: Kiosco; abierta: boolean; bloqueado: boolean; detalle: string; onInterruptor: () => void; onSalir: () => void; onAyuda: () => void }) {
+export default function BarraSuperior({ kiosco, rol = "dueno", abierta, bloqueado, detalle, onInterruptor, onSalir, onAyuda }:
+  { kiosco: Kiosco; rol?: Rol; abierta: boolean; bloqueado: boolean; detalle: string; onInterruptor: () => void; onSalir: () => void; onAyuda: () => void }) {
   return (
     <header className="barra-sup">
-      <span className="barra-nombre">{kiosco.nombre}</span>
-      <button type="button" role="switch" aria-checked={abierta} disabled={bloqueado} className={`interruptor${abierta ? " on" : ""}`} onClick={onInterruptor}>
+      <span className="barra-nombre">{kiosco.nombre}{rol !== "dueno" && <small className="mut"> · {ETIQUETA_ROL[rol]}</small>}</span>
+      <button type="button" role="switch" aria-checked={abierta} disabled={bloqueado || !puedeConfigurarLocal(rol)} title={puedeConfigurarLocal(rol) ? undefined : "Solo el dueño abre y cierra la tienda"} className={`interruptor${abierta ? " on" : ""}`} onClick={onInterruptor}>
         <span className="int-pista" aria-hidden="true"><span className="int-bola" /></span>
         <span className="int-texto"><b>{abierta ? "Tienda abierta" : "Tienda cerrada"}</b><small>{detalle}</small></span>
       </button>

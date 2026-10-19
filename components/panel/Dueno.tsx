@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase, type Kiosco } from "@/lib/supabase";
 import { estadoTienda, textoApertura } from "@/lib/horario";
-import { DESTINOS, destinoDeTab, rutaDeTab, segmentosDe, tabDeRuta, type Tab } from "@/lib/navegacion";
+import { destinoDeTab, puedeConfigurarLocal, puedeVer, rutaDeTab, segmentosDe, tabDeRuta, tabInicio, type Rol, type Tab } from "@/lib/navegacion";
 import type { LineaCompra } from "@/lib/compras";
 import type { Seleccion } from "@/lib/etiquetas";
 import { useConfirmar } from "@/components/ui/Confirmar";
@@ -29,14 +29,16 @@ import AyudaPanel from "./AyudaPanel";
 import Bienvenida from "./Bienvenida";
 import { leerModo, guardarModo, type Modo } from "@/lib/modo";
 
-export default function Dueno({ kiosco, recargar }: { kiosco: Kiosco; recargar: () => void }) {
+export default function Dueno({ kiosco, rol = "dueno", recargar }: { kiosco: Kiosco; rol?: Rol; recargar: () => void }) {
   const router = useRouter();
   const pathname = usePathname();
   const tabRuta = tabDeRuta(segmentosDe(pathname));
-  const tab: Tab = tabRuta ?? "resumen";
+  // Una pantalla que tu rol no ve (el cajero en /panel/productos) lleva a la que sí: la base igual la rechazaría.
+  const permitida = tabRuta !== null && puedeVer(rol, tabRuta);
+  const tab: Tab = permitida ? tabRuta : tabInicio(rol);
   const destino = destinoDeTab(tab);
   // Una dirección que no existe (/panel/loquesea) vuelve al inicio.
-  useEffect(() => { if (!tabRuta) router.replace("/panel"); }, [tabRuta, router]);
+  useEffect(() => { if (!permitida) router.replace(rutaDeTab(tabInicio(rol))); }, [permitida, rol, router]);
   const irTab = (t: Tab) => router.push(rutaDeTab(t));
 
   const [precarga, setPrecarga] = useState<Seleccion[] | null>(null);
@@ -67,7 +69,7 @@ export default function Dueno({ kiosco, recargar }: { kiosco: Kiosco; recargar: 
     const traer = async () => {
       const [p, r] = await Promise.all([
         supabase.from("pedidos").select("id", { count: "exact", head: true }).eq("kiosco_id", kiosco.id).eq("estado", "pendiente"),
-        supabase.rpc("reposicion_resumen", { p_kiosco: kiosco.id }),
+        rol === "cajero" ? Promise.resolve({ data: null }) : supabase.rpc("reposicion_resumen", { p_kiosco: kiosco.id }),
       ]);
       if (!vivo) return;
       if (!p.error) setPendientes(p.count ?? 0);
@@ -78,7 +80,7 @@ export default function Dueno({ kiosco, recargar }: { kiosco: Kiosco; recargar: 
     void traer();
     const t = setInterval(() => { if (document.visibilityState === "visible") void traer(); }, 30000);
     return () => { vivo = false; clearInterval(t); };
-  }, [kiosco.id, tab]);
+  }, [kiosco.id, tab, rol]);
 
   const estado = estadoTienda(kiosco, ahora);
   const abierta = estado === "abierta";
@@ -86,6 +88,7 @@ export default function Dueno({ kiosco, recargar }: { kiosco: Kiosco; recargar: 
     : estado === "pausada" ? (kiosco.horario_auto ? "Pausada: no recibe pedidos aunque esté en horario" : "Tus clientes no pueden pedir") : kiosco.horario_auto ? "Abierta según tu horario" : "Tus clientes pueden pedir";
 
   async function interruptor() {
+    if (!puedeConfigurarLocal(rol)) return;
     if (abierta && !(await confirmar({ titulo: "¿Cerrar la tienda?", detalle: "Tus clientes no van a poder hacer pedidos hasta que la vuelvas a abrir.", confirmar: "Sí, cerrar tienda", peligro: true }))) return;
     await supabase.from("kioscos").update({ abierto: !kiosco.abierto }).eq("id", kiosco.id);
     recargar();
@@ -96,14 +99,14 @@ export default function Dueno({ kiosco, recargar }: { kiosco: Kiosco; recargar: 
       {ventanaConfirmar}
       {bienvenida && <Bienvenida onTerminar={cerrarBienvenida} />}
       <AyudaPanel tab={tab} abierta={ayudaAbierta} onCerrar={() => setAyudaAbierta(false)} />
-      <BarraSuperior kiosco={kiosco} abierta={abierta} bloqueado={estado === "fuera_de_horario"} detalle={detalle} onInterruptor={interruptor} onSalir={() => supabase.auth.signOut()} onAyuda={() => setAyudaAbierta(true)} />
-      <NavLateral actual={destino} pendientes={pendientes} porComprar={porComprar} />
+      <BarraSuperior kiosco={kiosco} rol={rol} abierta={abierta} bloqueado={estado === "fuera_de_horario"} detalle={detalle} onInterruptor={interruptor} onSalir={() => supabase.auth.signOut()} onAyuda={() => setAyudaAbierta(true)} />
+      <NavLateral actual={destino} pendientes={pendientes} porComprar={porComprar} rol={rol} />
       <section className="panel-main">
-        <SubNav destino={destino} tab={tab} modo={modo} />
-        {tab === "pedidos" && <Pedidos kiosco={kiosco} />}
+        <SubNav destino={destino} tab={tab} modo={modo} rol={rol} />
+        {tab === "pedidos" && <Pedidos kiosco={kiosco} rol={rol} />}
         {tab === "productos" && <Productos kiosco={kiosco} />}
         {tab === "fiado" && <Fiado kiosco={kiosco} />}
-        {tab === "caja" && <Caja kiosco={kiosco} />}
+        {tab === "caja" && <Caja kiosco={kiosco} rol={rol} />}
         {tab === "sellos" && <Sellos kiosco={kiosco} />}
         {tab === "precios" && <Precios kiosco={kiosco} />}
         {tab === "conteo" && <Conteo kiosco={kiosco} />}
@@ -112,9 +115,9 @@ export default function Dueno({ kiosco, recargar }: { kiosco: Kiosco; recargar: 
         {tab === "etiquetas" && <Etiquetas kiosco={kiosco} precarga={precarga} onPrecargaUsada={() => setPrecarga(null)} />}
         {tab === "resumen" && <Inicio kiosco={kiosco} onIr={irTab} />}
         {tab === "radar" && <Radar kiosco={kiosco} />}
-        {tab === "local" && <><MiKiosco kiosco={kiosco} onGuardado={recargar} modo={modo} onModo={cambiarModo} onVerBienvenida={() => setBienvenida(true)} /><h2>Cómo me fue</h2><Resumen kiosco={kiosco} onIr={irTab} /></>}
+        {tab === "local" && <>{puedeConfigurarLocal(rol) && <MiKiosco kiosco={kiosco} onGuardado={recargar} modo={modo} onModo={cambiarModo} onVerBienvenida={() => setBienvenida(true)} />}<h2>Cómo me fue</h2><Resumen kiosco={kiosco} onIr={irTab} /></>}
       </section>
-      <BarraInferior actual={destino} pendientes={pendientes} porComprar={porComprar} onSalir={() => supabase.auth.signOut()} />
+      <BarraInferior actual={destino} pendientes={pendientes} porComprar={porComprar} onSalir={() => supabase.auth.signOut()} rol={rol} />
     </div>
   );
 }

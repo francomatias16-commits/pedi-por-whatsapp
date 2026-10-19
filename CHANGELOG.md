@@ -1,5 +1,132 @@
 # Changelog
 
+## etapa3d-fotos-automaticas — 2026-10-18
+
+Tercera parte de la Etapa 3 (ver `docs/ETAPA3D_FOTOS.md`): fotos automáticas de productos, sugeridas y nunca aplicadas solas.
+
+### Agregado
+- `supabase/migrations/0034_fotos_auto.sql`: interruptor `kioscos.fotos_auto_activo`, tablas `fotos_uso` (cupo diario, solo servidor) y `fotos_historial` (origen, quién, derechos, foto anterior), funciones `foto_aplicar`, `foto_deshacer`, `fotos_configurar_activo` y `fotos_usar_cupo`.
+- `app/api/fotos/sugerir` y `app/api/fotos/descargar` (solo encargado y dueño, con el interruptor encendido). La descarga rechaza redes internas, redirecciones inseguras, tipos que no sean JPEG/PNG/WebP y más de 5 MB.
+- Mi negocio: "Fotos automáticas". Productos: "Buscar foto automática", elegir, confirmar derechos y deshacer.
+- `lib/fotos-sugerencias.ts`, `lib/fotos-cliente.ts`, `tests/fotos-sugerencias.test.mjs`, `supabase/tests/etapa29_test.py` (45 chequeos), mensajes en `lib/errores.ts`.
+- Variables opcionales: `SERPER_API_KEY`, `FOTOS_LIMITE_DIARIO`.
+- `lib/fotos-descarga.ts`: la IP se valida al conectar (cierra el DNS rebinding); `tests/fotos-descarga.test.mjs` prueba con sockets reales que un nombre que resuelve a red interna se corta antes de conectar.
+
+## etapa3c-zonas-envio — 2026-10-18
+
+Segunda parte de la Etapa 3 del plan (ver `docs/ETAPA3C_ZONAS.md`): envío por zonas.
+
+### Agregado
+- `supabase/migrations/0033_zonas_envio.sql`: tabla `zonas_envio` (RLS, lectura pública solo de las activas, escritura solo por RPC), interruptor `kioscos.zonas_envio_activo` (arranca apagado), `pedidos.zona_id` y `zona_nombre`, funciones `zona_guardar`, `zona_quitar` y `zonas_configurar_activo`, y `crear_pedido` con zona (la versión de 8 argumentos delega).
+- Mi negocio: "Envío por zonas". Tienda: selector de zona con costo y mínimo. Pedidos: muestra la zona.
+- `lib/zonas.ts`, `tests/zonas.test.mjs`, `supabase/tests/etapa28_test.py` (43 chequeos), mensajes en `lib/errores.ts`.
+
+### Notas
+- Aplicar la 0033 en el SQL Editor ANTES de subir el código (la tienda y el panel ya piden `zonas_envio_activo` y mandan `p_zona`).
+
+## etapa3a-seguimiento — 2026-10-18
+
+Quinta etapa del plan, primera parte de la Etapa 3 (ver `docs/ETAPA3A_SEGUIMIENTO.md`): seguimiento público del pedido.
+
+### Agregado
+- `supabase/migrations/0032_seguimiento.sql`: `pedidos.token_seguimiento` (64 hex, único, también para pedidos anteriores), `pedidos.entrega_estado` (`listo` o `en_camino`), interruptor `kioscos.seguimiento_activo` (arranca apagado), funciones `seguimiento_pedido(token)` (pública, sin datos personales) y `seguimiento_configurar_activo` (solo dueño), y trigger que fija las reglas de la etapa de entrega y hace inmutable el token.
+- Página pública `/seguimiento/[token]` (sin indexar, sin referrer, se actualiza cada 20 s).
+- Pedidos: botones "Marcar listo para retirar" / "Marcar en camino", insignia de entrega, interruptor (solo dueño) y link en el aviso por WhatsApp.
+- `lib/seguimiento.ts`, `tests/seguimiento.test.mjs`, `supabase/tests/etapa27_test.py` (33 chequeos), mensajes en `lib/errores.ts`.
+
+### Notas
+- El slug `seguimiento` queda reservado (constraint `NOT VALID`: no toca locales existentes).
+- Aplicar la 0032 en el SQL Editor ANTES de subir el código (el panel ya pide la columna `seguimiento_activo`).
+
+## etapa2b-qr-caja — 2026-10-18
+
+Cuarta etapa del plan, segunda mitad de la Etapa 2 (ver `docs/ETAPA2B_QR.md`): cobro con QR de Mercado Pago en la caja.
+
+### Agregado
+- `supabase/migrations/0031_qr_caja.sql`: `pos_qr_config` y `cobros_qr_pos`, interruptor `kioscos.cobro_qr_activo` (arranca apagado), funciones `qr_crear_cobro`, `qr_confirmar` (idempotente, verifica monto y moneda), `qr_estado_cobro`, `qr_cancelar_cobro`, `qr_puede_consultar`, `qr_vencer_pendientes`, `qr_estado_config`, `qr_cobros_sin_venta` y `qr_configurar_activo`. Trigger `ventas_pagos_exigir_qr`: con el interruptor encendido, un pago "mercadopago" solo se registra si hay un cobro aprobado del mismo monto sin usar.
+- Rutas `POST /api/pagos/mp/qr/{alta,cobrar,cancelar}` y `GET /api/pagos/mp/qr/estado`. El dueño debe elegir el evento "Order (Mercado Pago)" en los Webhooks de su aplicación (la caja igual detecta el pago por consulta, con demora). Cajero, encargado y dueño cobran; el alta es solo del dueño.
+- Caja: línea "Cobrar con QR" en el cobro (espera con consulta cada 3 segundos, cancelar, cobro ya aprobado), aviso de cobros con QR sin venta (en la caja y en el cierre).
+- Panel: "QR en el mostrador" dentro de Cobrar con Mercado Pago (alta con ubicación, QR para imprimir, interruptor).
+- Cobros con la API de Orders de Mercado Pago (`POST /v1/orders`, modo static sobre el QR fijo; caja con `POST /v2/pos`). `cobros_qr_pos.mp_order_id` guarda la orden.
+- `lib/pagos/qr.ts`, `lib/pagos/qr-cliente.ts`, `components/CobroQR.tsx`, `components/caja/{useQrCaja.ts,QrSinVenta.tsx}`.
+- Tests: `supabase/tests/etapa26_test.py` y `tests/qr.test.mjs` (`npm run test:qr`, dentro de `npm test`).
+
+### Cambiado
+- El webhook y la reconciliación de la Etapa 1 reparten por referencia externa entre pedidos de la tienda y cobros QR. El cron diario también reconcilia y vence cobros QR.
+- `mp_desconectar` y un token revocado apagan también el QR.
+- `lib/pagos/mp.ts`: las respuestas vacías (borrar una orden) ya no rompen.
+
+### Importante
+- Aplicar **0031** en el SQL Editor (con backup) **antes** de subir el código. El interruptor queda apagado: nada cambia hasta que el dueño lo encienda.
+- Un QR fijo atiende un cobro a la vez por local. Los reembolsos son manuales desde Mercado Pago.
+- No verificado acá: Mercado Pago real (sandbox: formato del aviso del tema Order, búsqueda de caja por id externo, nombre de provincia), Supabase real y el uso en celular. Sí corridos con Postgres 16: la 0031 y los 27 tests SQL; también `npm test`, `typecheck` y `build` (con Google Fonts simulado).
+
+## etapa2a-equipo — 2026-10-18
+
+Tercera etapa del plan, primera mitad (ver `docs/ETAPA2A_EQUIPO.md`): cajeros y roles. La 2B (QR de Mercado Pago en la caja) queda para después.
+
+### Agregado
+- `supabase/migrations/0030_equipo.sql`: `kiosco_miembros` y `kiosco_invitaciones` (solo por RPC), `rol_en` y `es_miembro`, `equipo_invitar/listar/cambiar_rol/quitar/revocar_invitacion/ver_invitacion/aceptar`, `pos_config_publica` (configuración del mostrador sin el hash del PIN) y `pos_exigir_supervisor`. Un trigger crea al dueño como miembro de cada local nuevo.
+- Matriz de permisos aplicada por catálogo sobre 37 políticas y 54 funciones; el despliegue falla si algo de la matriz no existe.
+- Invitación por enlace de un solo uso (`/unirse/[token]`), vence a los 7 días, el token no se guarda en claro.
+- Panel: Mi negocio > Mi equipo (invitar, cambiar rol, quitar, cancelar invitaciones). Menú filtrado por rol; el cajero entra directo a la caja.
+- `lib/equipo.ts`, roles en `lib/navegacion.ts`, mensajes nuevos en `lib/errores.ts`.
+- Tests: `supabase/tests/etapa25_test.py` (190 chequeos: invitaciones, rol por tabla y operación, caja, PIN de supervisor, aislamiento entre locales) y `tests/roles.test.mjs` (`npm run test:roles`, dentro de `npm test`).
+
+### Cambiado
+- Las políticas y funciones que decían "dueño" ahora dicen "miembro con estos roles"; el dueño de la cuenta sigue teniendo todo. `es_dueno()` no cambió.
+- Caja lee la configuración por `pos_config_publica()`. El cajero siempre pide PIN de supervisor para anular o devolver.
+- `borrar_cliente` se abre al encargado (coherente con la política de la tabla). `caja_reporte_z` se abre al cajero (lo necesita para cerrar su caja).
+
+### Importante
+- Aplicar **0030** en el SQL Editor (con backup) **antes** de subir el código.
+- Decisión que tomé por vos: el cajero anula solo con PIN de supervisor.
+- No verificado acá: Supabase real, el flujo de Google con la invitación y el celular. El build se probó con Google Fonts simulado.
+- Limitación: un cajero hoy no puede activar los avisos push (el botón está en Mi negocio).
+
+## etapa1-mercado-pago — 2026-10-18
+
+Segunda etapa del plan (ver `docs/ETAPA1_PAGOS.md`): el cliente paga al pedir y el pedido se confirma solo.
+
+### Agregado
+- `supabase/migrations/0029_pagos.sql`: tablas `integraciones_pago` (credencial cifrada, sin acceso desde el navegador), `transacciones_pago` y `webhooks_recibidos`; columnas `pedidos.pago_estado`, `pedidos.stock_reservado`, `kioscos.cobro_online_activo`; funciones `pago_confirmar` (idempotente, verifica monto y moneda), `pago_vencer_pendientes`, `pago_estado_pedido`, `pago_puede_consultar`, `webhook_registrar`, `webhook_marcar`, `mp_estado_conexion` y `mp_desconectar`.
+- Rutas: `POST /api/pagos/mp/{conectar,probar,preferencia,webhook}`, `GET /api/pagos/mp/estado` y el cron `/api/cron/pagos`.
+- Tienda: "Pagar ahora con Mercado Pago" y la pantalla de retorno `/[slug]/pago`.
+- Panel: Mi negocio > "Cobrar con Mercado Pago" (guía en 4 pasos, probar la conexión, interruptor, desconectar). Pedidos: insignias "Esperando pago", "Pagado online" y "Reembolsado".
+- `lib/pagos/` (cifrado AES-256-GCM, firma y estados de Mercado Pago, pantalla de retorno), `lib/push-envio.ts`, avisos de pago en `lib/push.ts`.
+- Tests: `supabase/tests/etapa24_test.py` (101 chequeos) y `tests/pagos.test.mjs` (`npm run test:pagos`, dentro de `npm test`).
+
+### Cambiado
+- `crear_pedido` (misma firma): si el local cobra online y el cliente elige Mercado Pago, el pedido nace esperando pago y **reserva el stock**. El trigger de stock cuenta como retenido un pedido pendiente con reserva, y al devolver stock un producto que había quedado en 0 vuelve a estar disponible.
+- El aviso push de "pedido nuevo" de un pedido online sale cuando se aprueba el pago, no al crearlo.
+- Un pedido online espera su pago **3 horas** (el plan decía 24): una reserva sin pagar no puede retener stock de un día para otro. Se libera al crear otro pedido en el local y en el cron diario.
+
+### Importante
+- Aplicar **0029** en el SQL Editor (con backup) **antes** de subir el código.
+- Cargar `PAGOS_CIFRADO_KEY` en Vercel antes de que un dueño conecte Mercado Pago, y no cambiarla después.
+- No verificado acá: Mercado Pago real (sandbox), el formato exacto de la firma de avisos con `notification_url` por preferencia, el E2E y el flujo en celular. El build se probó con Google Fonts simulado.
+
+## etapa0-cierre-base — 2026-10-18
+
+Primera etapa del plan de incorporación de herramientas operativas (ver `docs/ETAPA0_CIERRE.md`).
+
+### Agregado
+- `supabase/migrations/0028_cierre_base.sql`: `kiosco_exportar_seccion` (el dueño baja sus datos, sin hash de PIN ni claves push), `kiosco_pedir_baja` / `kiosco_cancelar_baja` (baja suave: cierra la tienda y conserva los datos 30 días), `kioscos_purgar_bajas` (borrado definitivo, solo administración) y la columna `kioscos.baja_solicitada_at`.
+- Mi negocio > "Mis datos y baja de la cuenta" (`components/MisDatos.tsx`, `lib/exportar.ts`). Un local en baja deja de mostrarse en la tienda pública.
+- `/api/salud`, `app/error.tsx`, `app/global-error.tsx`, `app/not-found.tsx`.
+- Sentry (`@sentry/nextjs`) en servidor, navegador y edge; apagado sin DSN; limpia cuerpos, cookies, usuario y teléfonos antes de enviar.
+- E2E con Playwright (`e2e/`, `npm run test:e2e`) y job `e2e` en CI (se omite sin secretos).
+- Tests: `supabase/tests/etapa23_test.py` (35 chequeos), `tests/cierre-base.test.mjs` (`npm run test:cierre`, dentro de `npm test`).
+
+### Cambiado
+- `/privacidad` sección 6: describe la baja con borrado a los 30 días (texto en borrador, pendiente de revisión legal).
+- `next.config.mjs` ahora pasa por `withSentryConfig` (Next agrega `instrumentationHook`).
+
+### Importante
+- Aplicar **0027 y 0028** en el SQL Editor **antes** de subir el código. Sin 0028, la sección de baja y exportación muestra el error genérico, y la tienda pública falla porque pide `baja_solicitada_at`.
+- La numeración de la etapa 1 (pagos) pasa a **0029**: la 0028 quedó para el cierre de base.
+- No verificado acá: el E2E contra un Supabase real, ni push, escáner y crons en celular. El build se probó con Google Fonts simulado (sin internet en el entorno).
+
 ## fase3-completo v4 — 2026-10-17
 
 ### Agregado

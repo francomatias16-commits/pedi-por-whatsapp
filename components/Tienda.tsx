@@ -1,4 +1,5 @@
 "use client";
+import { costoEnvioMostrado, minimoEfectivo, type Zona } from "@/lib/zonas";
 import { useConfirmar } from "@/components/ui/Confirmar";
 import { useEffect, useMemo, useState } from "react";
 import { supabase, type Kiosco, type Producto } from "@/lib/supabase";
@@ -18,8 +19,15 @@ const ERRORES: [string, string][] = [
   ["minimo_no_alcanzado", "No llegás al monto mínimo del pedido."],
   ["medio_pago_invalido", "Ese medio de pago no está disponible. Elegí otro."],
   ["demasiados_pedidos", "Ya enviaste varios pedidos hace un momento. Esperá unos minutos."],
+  ["zona_requerida", "Elegí a qué zona va el envío."],
+  ["zona_invalida", "Esa zona ya no está disponible. Elegí otra."],
   ["local_saturado", "El local recibió muchos pedidos juntos. Probá en unos minutos."],
 ];
+const ERRORES_PAGO: Record<string, string> = {
+  pago_no_disponible: "Este local no puede cobrar online en este momento. Avisale por WhatsApp o hacé el pedido de nuevo con otro medio de pago.",
+  pedido_no_pagable: "Este pedido ya no está esperando pago.",
+  mp_no_responde: "Mercado Pago no responde. Probá de nuevo en un momento.",
+};
 const mensajeError = (m: string) => ERRORES.find(([k]) => m.includes(k))?.[1] ?? "No pudimos registrar el pedido. Revisá los datos e intentá de nuevo.";
 const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 const leer = <T,>(k: string, def: T): T => { try { const v = localStorage.getItem(k); return v ? (JSON.parse(v) as T) : def; } catch { return def; } };
@@ -30,13 +38,26 @@ export default function Tienda({ kiosco, productos }: { kiosco: Kiosco; producto
   const kCart = `cart:${kiosco.slug}`;
   const [cart, setCart] = useState<Record<string, number>>({});
   const [hidratado, setHidratado] = useState(false);
-  const [paso, setPaso] = useState<"catalogo" | "datos" | "listo">("catalogo");
+  const [paso, setPaso] = useState<"catalogo" | "datos" | "listo" | "pagar">("catalogo");
   const [nombre, setNombre] = useState("");
   const [tel, setTel] = useState("");
   const [modalidad, setModalidad] = useState<"retiro" | "envio">("retiro");
   const [dir, setDir] = useState("");
+  const zonasActivas = !!kiosco.zonas_envio_activo;
+  const [zonas, setZonas] = useState<Zona[]>([]);
+  const [zonaId, setZonaId] = useState("");
+  useEffect(() => {
+    if (!zonasActivas) return;
+    supabase.from("zonas_envio").select("id,nombre,descripcion,costo,pedido_minimo,activa").eq("kiosco_id", kiosco.id).eq("activa", true).order("nombre")
+      .then(({ data }) => setZonas((data ?? []) as Zona[]));
+  }, [zonasActivas, kiosco.id]);
   const [notas, setNotas] = useState("");
-  const [medio, setMedio] = useState(kiosco.medios_pago?.[0] ?? "efectivo");
+  // Cobro online: el local conectó Mercado Pago y lo tiene encendido. Entonces "Mercado Pago" es pagar ahora, desde acá.
+  const cobroOnline = !!kiosco.cobro_online_activo && (kiosco.medios_pago ?? []).includes("mercadopago");
+  const [medio, setMedio] = useState(cobroOnline ? "mercadopago" : kiosco.medios_pago?.[0] ?? "efectivo");
+  const pagaOnline = cobroOnline && medio === "mercadopago";
+  const etiquetaMedio = (m: string) => cobroOnline ? ({ mercadopago: "Pagar ahora con Mercado Pago", efectivo: "Pagar en efectivo al recibir", transferencia: "Pagar por transferencia" } as Record<string, string>)[m] ?? m : ETIQUETA_PAGO[m] ?? m;
+  const [pagoPendiente, setPagoPendiente] = useState<{ pedido: string; numero: number; total: number } | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
   // La hora se toma recién en el navegador (no en el servidor) para que no se desfase con la página en caché.
@@ -60,9 +81,11 @@ export default function Tienda({ kiosco, productos }: { kiosco: Kiosco; producto
   const items = useMemo(() => productos.filter((p) => cart[p.id]).map((p) => ({ p, cant: cart[p.id] })), [cart, productos]);
   const total = items.reduce((s, i) => s + Number(i.p.precio) * i.cant, 0);
   const cantTotal = items.reduce((s, i) => s + i.cant, 0);
-  const minimo = Number(kiosco.pedido_minimo ?? 0);
+  const zona = zonas.find((z) => z.id === zonaId) ?? null;
+  const minimo = minimoEfectivo(Number(kiosco.pedido_minimo ?? 0), modalidad, zona);
   const bajoMinimo = total < minimo;
-  const envio = modalidad === "envio" ? Number(kiosco.costo_envio ?? 0) : 0;
+  const envio = costoEnvioMostrado(zonasActivas, Number(kiosco.costo_envio ?? 0), modalidad, zona);
+  const faltaZona = modalidad === "envio" && zonasActivas && !zona;
   const estado = ahora ? estadoTienda(kiosco, ahora) : kiosco.abierto === false ? "pausada" : "abierta";
   const cerrado = estado !== "abierta";
   const proxima = estado === "fuera_de_horario" && ahora ? textoApertura(kiosco.horarios ?? {}, ahora) : null;
@@ -82,14 +105,34 @@ export default function Tienda({ kiosco, productos }: { kiosco: Kiosco; producto
   const cambiar = (id: string, d: number) =>
     setCart((c) => { const n = Math.min(99, Math.max(0, (c[id] ?? 0) + d)); const x = { ...c }; if (n) x[id] = n; else delete x[id]; return x; });
 
+  // Arma el link de pago del pedido (el monto lo calcula el servidor) y manda al cliente a Mercado Pago.
+  async function irAPagar(pedido: string) {
+    setError(""); setEnviando(true); setPaso("pagar");
+    try {
+      const r = await fetch("/api/pagos/mp/preferencia", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pedido }) });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && typeof j.link === "string") { window.location.href = j.link; return; }
+      setError(ERRORES_PAGO[j.error as string] ?? "No pudimos abrir Mercado Pago. Probá de nuevo.");
+    } catch { setError(ERRORES_PAGO.mp_no_responde); }
+    setEnviando(false);
+  }
+
   async function enviar() {
     setError(""); setEnviando(true);
     const { data, error: err } = await supabase.rpc("crear_pedido", {
       p_slug: kiosco.slug, p_nombre: nombre.trim(), p_telefono: tel, p_modalidad: modalidad,
-      p_direccion: dir, p_notas: notas, p_items: items.map((i) => ({ producto_id: i.p.id, cantidad: i.cant })), p_medio_pago: medio,
+      p_direccion: dir, p_notas: notas, p_items: items.map((i) => ({ producto_id: i.p.id, cantidad: i.cant })), p_zona: modalidad === "envio" && zonasActivas ? zonaId || null : null, p_medio_pago: medio,
     });
     setEnviando(false);
     if (err) { setError(mensajeError(err.message ?? "")); return; }
+    if (data.pago_online) {
+      // Pago online: el pedido queda esperando el pago. Al local le llega recién cuando Mercado Pago lo aprueba.
+      guardarLS("cliente", { nombre: nombre.trim(), tel, dir });
+      setCart({}); setNotas("");
+      setPagoPendiente({ pedido: data.pedido_id, numero: data.numero, total: Number(data.total) });
+      await irAPagar(data.pedido_id);
+      return;
+    }
     const texto = mensajePedido({
       numero: data.numero, nombre: nombre.trim(), telefono: tel, modalidad, direccion: dir, notas,
       costoEnvio: Number(data.costo_envio ?? 0), medioPago: medio,
@@ -112,8 +155,19 @@ export default function Tienda({ kiosco, productos }: { kiosco: Kiosco; producto
     </>
   );
 
+  if (paso === "pagar" && pagoPendiente) return (
+    <>
+      <h1>Pagá tu pedido</h1>
+      <p>Pedido #{pagoPendiente.numero} · Total {peso(pagoPendiente.total)}.</p>
+      {error ? <p role="alert" className="alerta">{error}</p> : <p role="status" className="mut">Te estamos llevando a Mercado Pago…</p>}
+      <button className="ancho" disabled={enviando} onClick={() => irAPagar(pagoPendiente.pedido)}>{enviando ? "Abriendo Mercado Pago…" : "Ir a Mercado Pago"}</button>
+      <p className="mut">Tu pedido queda guardado unas horas esperando el pago. Si no podés pagar, avisale a {kiosco.nombre} por WhatsApp.</p>
+      <p><button className="sec" onClick={() => { setPagoPendiente(null); setError(""); setPaso("catalogo"); }}>Volver a la tienda</button></p>
+    </>
+  );
+
   if (paso === "datos") {
-    const ok = nombre.trim().length >= 2 && tel.replace(/\D/g, "").length >= 8 && (modalidad === "retiro" || dir.trim().length >= 3) && !bajoMinimo && !cerrado;
+    const ok = nombre.trim().length >= 2 && tel.replace(/\D/g, "").length >= 8 && (modalidad === "retiro" || dir.trim().length >= 3) && !faltaZona && !bajoMinimo && !cerrado;
     return (
       <>
       {ventanaConfirmar}
@@ -142,18 +196,29 @@ export default function Tienda({ kiosco, productos }: { kiosco: Kiosco; producto
             {kiosco.acepta_envio && <option value="envio">Envío</option>}
           </select>
         </label>
-        {modalidad === "envio" && Number(kiosco.costo_envio) > 0 && <p className="mut">El envío cuesta {peso(Number(kiosco.costo_envio))}.</p>}
+        {modalidad === "envio" && zonasActivas && (
+          <label>¿A qué zona?
+            <select value={zonaId} onChange={(e) => setZonaId(e.target.value)}>
+              <option value="">Elegí una zona</option>
+              {zonas.map((z) => <option key={z.id} value={z.id}>{z.nombre} · {Number(z.costo) > 0 ? peso(Number(z.costo)) : "envío gratis"}</option>)}
+            </select>
+          </label>
+        )}
+        {zona?.descripcion && <p className="mut">{zona.descripcion}</p>}
+        {modalidad === "envio" && !zonasActivas && Number(kiosco.costo_envio) > 0 && <p className="mut">El envío cuesta {peso(Number(kiosco.costo_envio))}.</p>}
+        {modalidad === "envio" && zonasActivas && zona && Number(zona.costo) > 0 && <p className="mut">El envío a {zona.nombre} cuesta {peso(Number(zona.costo))}.</p>}
         {modalidad === "envio" && <label>Dirección<input value={dir} onChange={(e) => setDir(e.target.value)} autoComplete="street-address" /></label>}
         {(kiosco.medios_pago?.length ?? 0) > 1 && (
           <label>¿Cómo pagás?
             <select value={medio} onChange={(e) => setMedio(e.target.value)}>
-              {kiosco.medios_pago.map((m) => <option key={m} value={m}>{ETIQUETA_PAGO[m] ?? m}</option>)}
+              {kiosco.medios_pago.map((m) => <option key={m} value={m}>{etiquetaMedio(m)}</option>)}
             </select>
           </label>
         )}
         <label>Nota (opcional)<textarea rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} /></label>
         {error && <p role="alert" className="alerta">{error}</p>}
-        <button className="ancho" disabled={!ok || enviando} onClick={enviar}>{enviando ? "Enviando…" : "Enviar pedido por WhatsApp"}</button>
+        <button className="ancho" disabled={!ok || enviando} onClick={enviar}>{enviando ? "Enviando…" : pagaOnline ? "Pagar ahora con Mercado Pago" : "Enviar pedido por WhatsApp"}</button>
+        {pagaOnline && <p className="mut">Vas a pagar en Mercado Pago. Cuando se apruebe el pago, {kiosco.nombre} recibe tu pedido.</p>}
         <p className="mut">Usamos tu nombre y teléfono solo para gestionar este pedido con {kiosco.nombre}. <Link href="/privacidad">Política de privacidad</Link>.</p>
         <button className="sec" onClick={async () => { if (await confirmar({ titulo: "¿Vaciar el pedido?", confirmar: "Sí, seguir", peligro: true })) { setCart({}); setPaso("catalogo"); } }}>Vaciar pedido</button>
       </>

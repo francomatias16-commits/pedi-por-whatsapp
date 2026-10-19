@@ -25,7 +25,52 @@ export const ERRORES_SQL: [string, string][] = [
   ["sin_cliente", "Elegí un cliente para esta operación."],
   ["sin_productos", "No hay productos para contar en esa categoría."],
   ["ya_revertido", "Esa operación ya fue revertida."],
+  ["confirmacion_invalida", "El nombre que escribiste no coincide con el de tu local."],
+  ["seccion_invalida", "No se pudo preparar una parte de tus datos. Probá de nuevo."],
+  ["pago_pendiente", "Este pedido espera su pago online. Se confirma solo cuando Mercado Pago lo apruebe."],
+  ["pago_protegido", "El estado de pago lo maneja Mercado Pago: no se puede cambiar a mano."],
+  ["estado_pago_invalido", "El estado del pago no es válido."],
+  ["pago_invalido", "Ese pago no corresponde a este pedido."],
+  ["pedido_no_encontrado", "No encontramos ese pedido."],
+  ["evento_invalido", "El aviso de pago no es válido."],
+  // Equipo del kiosco (0030)
+  ["rol_invalido", "Ese rol no es válido. Elegí cajero o encargado."],
+  ["demasiadas_invitaciones", "Ya hay 20 invitaciones sin usar. Cancelá alguna o esperá a que venzan."],
+  ["equipo_lleno", "El equipo llegó al máximo de 30 personas."],
+  ["no_se_puede_cambiar_dueno", "El dueño de la cuenta no se puede cambiar ni quitar."],
+  ["miembro_no_encontrado", "Esa persona ya no forma parte del equipo."],
+  ["invitacion_invalida", "Esta invitación no sirve: ya se usó, la cancelaron o venció. Pedile al dueño una nueva."],
+  ["ya_tiene_local", "Tu cuenta ya forma parte de otro local. Una cuenta puede estar en un solo local a la vez."],
+  ["ya_es_miembro", "Ya sos parte de este local."],
+  ["supervisor_requerido", "Para anular o devolver, el dueño tiene que configurar un PIN de supervisor en Impresora y ajustes."],
+  // QR de Mercado Pago en la caja (0031)
+  ["qr_inactivo", "El cobro con QR está apagado en este local."],
+  ["qr_sin_config", "El QR del local no está listo. Revisalo en Mi negocio, Cobrar con Mercado Pago."],
+  ["qr_monto_invalido", "El cobro con QR tiene que ser de $15 o más."],
+  ["qr_ocupado", "Ya hay otro cobro con QR esperando el pago. Esperá que termine o cancelalo."],
+  ["qr_sin_cobro", "Esa venta dice QR pero no hay un cobro aprobado por ese monto. Cobrá primero con \"Cobrar con QR\" o elegí otro medio."],
+  ["cobro_no_encontrado", "No encontramos ese cobro."],
+  // Seguimiento del pedido (0032)
+  ["token_protegido", "El link de seguimiento no se puede cambiar."],
+  ["entrega_estado_invalido", "Solo se puede marcar listo o en camino un pedido confirmado: listo para retiros, en camino para envíos."],
+  // Envío por zonas (0033)
+  ["zona_requerida", "Elegí a qué zona va el envío."],
+  ["zona_invalida", "Esa zona ya no está disponible. Elegí otra."],
+  ["zona_nombre_invalido", "Escribí un nombre para la zona."],
+  ["zona_costo_invalido", "El costo y el pedido mínimo tienen que ser números de cero en adelante, con hasta dos decimales."],
+  ["zona_repetida", "Ya tenés una zona con ese nombre."],
+  ["zona_no_encontrada", "No encontramos esa zona."],
+  ["zonas_maximas", "Llegaste al máximo de 30 zonas."],
+  ["sin_zonas", "Para encender el envío por zonas, primero cargá al menos una zona activa."],
+  // Fotos automáticas (0034)
+  ["foto_invalida", "Esa foto no se puede usar. Probá con otra."],
+  ["derechos_requeridos", "Para usar una foto de internet tenés que confirmar que podés usarla."],
+  ["foto_producto_invalido", "No encontramos ese producto en tu local."],
+  ["foto_no_encontrada", "No encontramos ese cambio de foto, o ya se deshizo."],
+  ["foto_cambio_posterior", "Después de ese cambio la foto se modificó otra vez, así que no se puede deshacer."],
+  ["limite_fotos", "Llegaste al tope de búsquedas en internet de hoy. Probá mañana o subí la foto vos."],
 ];
+
 
 /** Traduce el mensaje de error de Supabase/Postgres a un texto para el dueño. Si no se reconoce, devuelve un texto genérico. */
 export const mensajeErrorSql = (m: string, extra: [string, string][] = []) =>

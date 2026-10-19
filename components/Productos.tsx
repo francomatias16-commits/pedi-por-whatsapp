@@ -7,6 +7,7 @@ import { margenPct } from "@/lib/margen";
 import Escaner from "./Escaner";
 import { useConfirmar } from "@/components/ui/Confirmar";
 import CargaMasiva from "./CargaMasiva";
+import FotosSugeridas from "./FotosSugeridas";
 import { BUCKET, comprimirImagen, rutaDeStorage, rutaFoto } from "@/lib/fotos";
 
 const num = (s: string) => Number(s.replace(",", "."));
@@ -273,6 +274,7 @@ export default function Productos({ kiosco }: { kiosco: Kiosco }) {
                   <input type="checkbox" checked={ed.sinStock} onChange={(e) => setEd({ ...ed, sinStock: e.target.checked })} style={{ width: "auto", marginRight: 8 }} />Permitir vender aunque no haya stock en el sistema (en el mostrador)
                 </label>
               )}
+              {kiosco.fotos_auto_activo && <FotosSugeridas kiosco={kiosco} producto={p} onCambio={cargar} />}
               <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap", margin: "0 0 10px" }}>
                 <label className="btn sec" aria-busy={subiendo === p.id}>
                   {subiendo === p.id ? "Subiendo…" : p.imagen_url ? "Cambiar foto" : "Agregar foto"}

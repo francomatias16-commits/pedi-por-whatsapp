@@ -4,6 +4,8 @@ import { supabase, type Kiosco } from "@/lib/supabase";
 import { mensajeError, normalizarZ, num, type ReporteZ } from "@/lib/caja";
 import { peso } from "@/lib/whatsapp";
 import ReporteZView from "./ReporteZ";
+import QrSinVenta from "./QrSinVenta";
+import { useQrCaja } from "./useQrCaja";
 
 // Cierre de caja (arqueo) + reporte Z del turno actual.
 export default function CierreCaja({ kiosco, turnoId, refresco, onCerrada }: { kiosco: Kiosco; turnoId: string; refresco: number; onCerrada: () => void }) {
@@ -12,6 +14,7 @@ export default function CierreCaja({ kiosco, turnoId, refresco, onCerrada }: { k
   const [err, setErr] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
+  const qr = useQrCaja(kiosco.id);
 
   const cargar = useCallback(async () => {
     const { data, error } = await supabase.rpc("caja_reporte_z", { p_turno: turnoId });
@@ -51,6 +54,7 @@ export default function CierreCaja({ kiosco, turnoId, refresco, onCerrada }: { k
         {dif != null && (
           <p className={dif === 0 ? "ok" : "neg"}>{dif === 0 ? "La caja cuadra." : dif > 0 ? `Sobran ${peso(dif)}.` : `Faltan ${peso(Math.abs(dif))}.`}</p>
         )}
+        {qr.activo && <QrSinVenta cobros={qr.sinVenta} enCierre />}
         {err && <p className="pos-error" role="alert">{err}</p>}
         {!confirmando
           ? <button className="peligro-solido" onClick={() => { if (declarado === "") return setErr("Indicá el monto declarado."); setErr(""); setConfirmando(true); }}>Cerrar caja</button>

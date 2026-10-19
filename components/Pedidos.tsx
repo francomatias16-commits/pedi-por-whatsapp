@@ -1,6 +1,8 @@
 "use client";
+import { puedeCorregirFiado, type Rol } from "@/lib/navegacion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase, type Kiosco, type Pedido } from "@/lib/supabase";
+import { linkSeguimiento, textoAviso } from "@/lib/seguimiento";
 import { ETIQUETA_PAGO, linkWhatsApp, normalizarTelefonoAR, peso } from "@/lib/whatsapp";
 import Pantalla from "@/components/ui/Pantalla";
 import Aviso from "@/components/ui/Aviso";
@@ -8,6 +10,7 @@ import Insignia from "@/components/ui/Insignia";
 import EstadoVacio from "@/components/ui/EstadoVacio";
 import Esqueleto from "@/components/ui/Esqueleto";
 import { useConfirmar } from "@/components/ui/Confirmar";
+import { mensajeErrorSql } from "@/lib/errores";
 
 type Item = { nombre: string; cantidad: number; precio_unit: number };
 type PedidoConItems = Pedido & { pedido_items: Item[]; fiado_movimientos: { id: string }[] | { id: string } | null };
@@ -27,6 +30,9 @@ const ESTADO: Record<Pedido["estado"], { texto: string; icono: string; tono: "al
   cancelado: { texto: "Cancelado", icono: "✖", tono: "error" },
 };
 
+// Pedido online que todavía no se pagó: no se puede confirmar ni cuenta como pedido nuevo hasta que Mercado Pago apruebe el pago.
+const esperandoPago = (p: Pedido) => p.pago_estado === "pendiente" && p.estado === "pendiente";
+
 // Aviso sonoro: el celular suele estar en el bolsillo o el mostrador, y en iPhone no hay vibración.
 function pitar() {
   try {
@@ -44,15 +50,12 @@ function pitar() {
 
 const inicioDelDia = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString(); };
 
-function mensajeAviso(k: Kiosco, p: Pedido) {
-  const base = `Hola ${p.cliente_nombre}! Te escribimos de ${k.nombre} por tu pedido #${p.numero}.`;
-  if (p.estado === "pendiente") return `${base} Lo recibimos y en un momento te lo confirmamos.`;
-  if (p.estado === "confirmado") return `${base} Ya está confirmado. ${p.modalidad === "envio" ? "Te lo llevamos en breve." : "Podés pasar a retirarlo."}`;
-  if (p.estado === "entregado") return `${base} Gracias por tu compra!`;
-  return `${base} Lo tuvimos que cancelar, disculpá. Escribinos si querés rehacerlo.`;
+function mensajeAviso(k: Kiosco, p: Pedido, origen: string) {
+  const link = k.seguimiento_activo && p.token_seguimiento ? linkSeguimiento(p.token_seguimiento, origen) : null;
+  return textoAviso({ nombre: p.cliente_nombre, local: k.nombre, numero: p.numero, estado: p.estado, modalidad: p.modalidad, entrega: p.entrega_estado }, link);
 }
 
-export default function Pedidos({ kiosco }: { kiosco: Kiosco }) {
+export default function Pedidos({ kiosco, rol = "dueno" }: { kiosco: Kiosco; rol?: Rol }) {
   const [lista, setLista] = useState<PedidoConItems[]>([]);
   const [filtro, setFiltro] = useState<Filtro>("hoy");
   const [abierto, setAbierto] = useState<string | null>(null);
@@ -63,6 +66,9 @@ export default function Pedidos({ kiosco }: { kiosco: Kiosco }) {
   const enVivoRef = useRef(false);
   const pendientesPrev = useRef<number | null>(null);
   const [ventanaConfirmar, confirmar] = useConfirmar();
+  const [origen, setOrigen] = useState("");
+  useEffect(() => setOrigen(window.location.origin), []);
+  const [activo, setActivo] = useState(!!kiosco.seguimiento_activo);
   const [sonido, setSonido] = useState(true);
   const sonidoRef = useRef(true);
   sonidoRef.current = sonido;
@@ -78,7 +84,7 @@ export default function Pedidos({ kiosco }: { kiosco: Kiosco }) {
     setError(""); setCargado(true);
     const rows = (data ?? []) as PedidoConItems[];
     setLista(rows);
-    const pend = rows.filter((p) => p.estado === "pendiente").length;
+    const pend = rows.filter((p) => p.estado === "pendiente" && !esperandoPago(p)).length;
     if (pendientesPrev.current !== null && pend > pendientesPrev.current) {
       if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
       if (sonidoRef.current) pitar();
@@ -111,7 +117,19 @@ export default function Pedidos({ kiosco }: { kiosco: Kiosco }) {
 
   async function estado(id: string, e: Pedido["estado"]) {
     const { error: err } = await supabase.from("pedidos").update({ estado: e }).eq("id", id);
-    if (err) setError(err.message?.includes("sin_stock") ? "No hay stock suficiente para confirmar este pedido. Revisá las cantidades en Productos." : "No se pudo cambiar el estado."); else cargar();
+    if (err) setError(err.message?.includes("sin_stock") ? "No hay stock suficiente para confirmar este pedido. Revisá las cantidades en Productos." : err.message?.includes("pago_pendiente") ? mensajeErrorSql("pago_pendiente") : "No se pudo cambiar el estado."); else cargar();
+  }
+
+  async function entrega(id: string, e: "listo" | "en_camino") {
+    setError("");
+    const { error: err } = await supabase.from("pedidos").update({ entrega_estado: e }).eq("id", id);
+    if (err) setError(mensajeErrorSql(err.message)); else cargar();
+  }
+  async function cambiarSeguimiento(v: boolean) {
+    setError("");
+    const { error: err } = await supabase.rpc("seguimiento_configurar_activo", { p_kiosco: kiosco.id, p_activo: v });
+    if (err) { setError(mensajeErrorSql(err.message)); return; }
+    setActivo(v); kiosco.seguimiento_activo = v;
   }
 
   // Un toque: deja el pedido entregado (suma el sello) y anota el total en la libreta del cliente.
@@ -132,9 +150,10 @@ export default function Pedidos({ kiosco }: { kiosco: Kiosco }) {
 
   const desde = inicioDelDia();
   const hoy = lista.filter((p) => p.created_at >= desde);
-  const vendidoHoy = hoy.filter((p) => p.estado !== "cancelado").reduce((s, p) => s + Number(p.total), 0);
-  const pendientes = lista.filter((p) => p.estado === "pendiente").length;
-  const visibles = filtro === "hoy" ? hoy : filtro === "pendientes" ? lista.filter((p) => p.estado === "pendiente" || p.estado === "confirmado") : lista;
+  const vendidoHoy = hoy.filter((p) => p.estado !== "cancelado" && !esperandoPago(p)).reduce((s, p) => s + Number(p.total), 0);
+  const pendientes = lista.filter((p) => p.estado === "pendiente" && !esperandoPago(p)).length;
+  const sinPagar = lista.filter(esperandoPago).length;
+  const visibles = filtro === "hoy" ? hoy : filtro === "pendientes" ? lista.filter((p) => (p.estado === "pendiente" && !esperandoPago(p)) || p.estado === "confirmado") : lista;
 
   return (
     <Pantalla titulo="Pedidos" ayuda="Acá llegan los pedidos que tus clientes hacen desde tu tienda. Tocá “Confirmar” cuando puedas prepararlo y “Avisar” para escribirle por WhatsApp.">
@@ -153,6 +172,12 @@ export default function Pedidos({ kiosco }: { kiosco: Kiosco }) {
       <label className="mut" style={{ display: "block", margin: "6px 0" }}>
         <input type="checkbox" checked={sonido} onChange={(e) => setSonido(e.target.checked)} style={{ width: "auto", marginRight: 8 }} />Sonido cuando llega un pedido
       </label>
+      {rol === "dueno" && (
+        <label className="mut" style={{ display: "block", margin: "6px 0" }}>
+          <input type="checkbox" checked={activo} onChange={(e) => cambiarSeguimiento(e.target.checked)} style={{ width: "auto", marginRight: 8 }} />Mandar a los clientes un link para seguir su pedido
+        </label>
+      )}
+      {sinPagar > 0 && <Aviso tipo="info">{sinPagar === 1 ? "Hay 1 pedido esperando el pago online." : `Hay ${sinPagar} pedidos esperando el pago online.`} Te avisamos cuando se aprueben.</Aviso>}
       {error && <Aviso tipo="error">{error}</Aviso>}
       {aviso && <Aviso tipo="ok">{aviso}</Aviso>}
       {!cargado && !error && <Esqueleto lineas={3} />}
@@ -166,13 +191,19 @@ export default function Pedidos({ kiosco }: { kiosco: Kiosco }) {
           <button type="button" className="fila-toggle" aria-expanded={abierto === p.id} onClick={() => setAbierto(abierto === p.id ? null : p.id)}>
             <span>#{p.numero} · {p.cliente_nombre}</span>
             <span className="acciones">
-              <Insignia tono={ESTADO[p.estado].tono} icono={ESTADO[p.estado].icono}>{ESTADO[p.estado].texto}</Insignia>
+              {esperandoPago(p)
+                ? <Insignia tono="alerta" icono="…">Esperando pago</Insignia>
+                : p.estado === "confirmado" && p.entrega_estado
+                  ? <Insignia tono="info" icono="✔">{p.entrega_estado === "listo" ? "Listo para retirar" : "En camino"}</Insignia>
+                : <Insignia tono={ESTADO[p.estado].tono} icono={ESTADO[p.estado].icono}>{ESTADO[p.estado].texto}</Insignia>}
+              {p.pago_estado === "pagado" && <Insignia tono="ok" icono="✔">Pagado online</Insignia>}
+              {p.pago_estado === "reembolsado" && <Insignia tono="neutro">Reembolsado</Insignia>}
               {tieneFiado(p) && <Insignia tono="neutro">Fiado</Insignia>}
               <span className="mas">{abierto === p.id ? "Ocultar" : "Ver detalle"}</span>
             </span>
           </button>
           <div className="mut">
-            {new Date(p.created_at).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })} · {p.modalidad === "envio" ? `Envío: ${p.direccion}` : "Retiro"} · {peso(Number(p.total))} · {ETIQUETA_PAGO[p.medio_pago] ?? p.medio_pago}
+            {new Date(p.created_at).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })} · {p.modalidad === "envio" ? `Envío${p.zona_nombre ? ` (${p.zona_nombre})` : ""}: ${p.direccion}` : "Retiro"} · {peso(Number(p.total))} · {ETIQUETA_PAGO[p.medio_pago] ?? p.medio_pago}
           </div>
           {abierto === p.id && (
             <ul style={{ margin: "8px 0", paddingLeft: 20 }}>
@@ -182,16 +213,18 @@ export default function Pedidos({ kiosco }: { kiosco: Kiosco }) {
             </ul>
           )}
           <div className="row" style={{ justifyContent: "flex-start", marginTop: 8, flexWrap: "wrap" }}>
-            {p.estado === "pendiente" && <button className="principal" onClick={() => estado(p.id, "confirmado")}>Confirmar pedido</button>}
+            {p.estado === "pendiente" && !esperandoPago(p) && <button className="principal" onClick={() => estado(p.id, "confirmado")}>Confirmar pedido</button>}
+            {esperandoPago(p) && <span className="mut">Se confirma solo cuando Mercado Pago apruebe el pago.</span>}
             {p.estado === "confirmado" && (<>
+              {p.entrega_estado == null && <button className="sec" onClick={() => entrega(p.id, p.modalidad === "envio" ? "en_camino" : "listo")}>{p.modalidad === "envio" ? "Marcar en camino" : "Marcar listo para retirar"}</button>}
               <button className="principal" onClick={() => estado(p.id, "entregado")}>Marcar como entregado</button>
-              <button className="sec" onClick={() => aFiado(p)}>Entregado a fiado</button>
+              {p.pago_estado !== "pagado" && <button className="sec" onClick={() => aFiado(p)}>Entregado a fiado</button>}
             </>)}
-            {p.estado === "entregado" && !tieneFiado(p) && <button className="sec" onClick={() => aFiado(p)}>Pasar a fiado</button>}
-            {p.estado === "entregado" && tieneFiado(p) && <button className="sec" onClick={() => quitarFiado(p)}>Quitar fiado</button>}
-            <a className="btn sec" aria-label={`Avisar a ${p.cliente_nombre} por WhatsApp`} href={linkWhatsApp(normalizarTelefonoAR(p.cliente_telefono), mensajeAviso(kiosco, p))}>Avisar por WhatsApp</a>
+            {p.estado === "entregado" && !tieneFiado(p) && p.pago_estado !== "pagado" && <button className="sec" onClick={() => aFiado(p)}>Pasar a fiado</button>}
+            {p.estado === "entregado" && tieneFiado(p) && puedeCorregirFiado(rol) && <button className="sec" onClick={() => quitarFiado(p)}>Quitar fiado</button>}
+            <a className="btn sec" aria-label={`Avisar a ${p.cliente_nombre} por WhatsApp`} href={linkWhatsApp(normalizarTelefonoAR(p.cliente_telefono), mensajeAviso(kiosco, p, origen))}>Avisar por WhatsApp</a>
             {(p.estado === "pendiente" || p.estado === "confirmado") && (
-              <button className="sec" onClick={async () => { if (await confirmar({ titulo: `¿Cancelar el pedido #${p.numero}?`, detalle: "El cliente no se entera solo: usá “Avisar” para contárselo.", confirmar: "Sí, cancelar pedido", peligro: true })) estado(p.id, "cancelado"); }}>Cancelar</button>
+              <button className="sec" onClick={async () => { if (await confirmar({ titulo: `¿Cancelar el pedido #${p.numero}?`, detalle: p.pago_estado === "pagado" ? "Este pedido ya está pagado online: tenés que reembolsarlo vos desde tu cuenta de Mercado Pago. El cliente no se entera solo: usá “Avisar”." : "El cliente no se entera solo: usá “Avisar” para contárselo.", confirmar: "Sí, cancelar pedido", peligro: true })) estado(p.id, "cancelado"); }}>Cancelar</button>
             )}
           </div>
         </div>

@@ -7,6 +7,11 @@ import { type Modo } from "@/lib/modo";
 import Pantalla from "@/components/ui/Pantalla";
 import { hayAyuda, linkAyuda } from "@/lib/ayuda";
 import Avisos from "@/components/Avisos";
+import MisDatos from "@/components/MisDatos";
+import CobroMP from "@/components/CobroMP";
+import Equipo from "@/components/Equipo";
+import ZonasEnvio from "@/components/ZonasEnvio";
+import FotosAuto from "@/components/FotosAuto";
 import { DIAS, MAX_TRAMOS, ORDEN_SEMANA, hayDiasAbiertos, horariosValidos, resumenHorario, type Horarios } from "@/lib/horario";
 
 export default function MiKiosco({ kiosco, onGuardado, modo, onModo, onVerBienvenida }: { kiosco: Kiosco; onGuardado: () => void; modo: Modo; onModo: (m: Modo) => void; onVerBienvenida: () => void }) {
@@ -121,6 +126,26 @@ export default function MiKiosco({ kiosco, onGuardado, modo, onModo, onVerBienve
         {hayAyuda
           ? <a className="btn sec" href={linkAyuda()} target="_blank" rel="noopener noreferrer">Hablar por WhatsApp con nosotros</a>
           : <p className="mut">Todavía no hay un número de ayuda configurado.</p>}
+      </Plegable>
+
+      <Plegable titulo="Envío por zonas">
+        <ZonasEnvio kiosco={kiosco} onCambio={onGuardado} />
+      </Plegable>
+
+      <Plegable titulo="Fotos automáticas">
+        <FotosAuto kiosco={kiosco} onCambio={onGuardado} />
+      </Plegable>
+
+      <Plegable titulo="Cobrar con Mercado Pago">
+        <CobroMP kiosco={kiosco} onCambio={onGuardado} />
+      </Plegable>
+
+      <Plegable titulo="Mi equipo">
+        <Equipo kiosco={kiosco} />
+      </Plegable>
+
+      <Plegable titulo="Mis datos y baja de la cuenta">
+        <MisDatos kiosco={kiosco} onCambio={onGuardado} />
       </Plegable>
 
       {msg && <p role="status" className={ok ? "ok" : undefined} style={ok ? undefined : { color: "var(--danger)" }}>{msg}</p>}

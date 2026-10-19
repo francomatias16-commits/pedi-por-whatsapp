@@ -94,3 +94,28 @@ Límites: el aviso llega si el navegador o la app instalada siguen con permiso; 
 - Resumen: tarjeta **Dinero parado en mercadería** (stock × último costo, con botón a "Para reponer") y panel **Productos modificados** (plan 2.6): cambios de stock por producto en hoy, 7 o 30 días, con diferencia neta y último movimiento. Por defecto oculta ventas, pedidos y devoluciones (y sus anulaciones); un tilde las incluye. Productos por peso se muestran en kg. Muestra hasta 1000 movimientos por período.
 - Restauración del backup (`.github/workflows/restore-to-test.yml`, manual): restaura el último backup en un proyecto de **prueba** (secreto `SUPABASE_TEST_DB_URL`) y compara tablas y conteos con producción. Borra el esquema `public` del destino, y omite triggers y claves foráneas a propósito (los triggers llamarían al webhook de producción; `auth.users` está vacío en la prueba). Por eso **no valida** triggers ni claves foráneas. Última comparación hecha a mano: 38 tablas iguales y mismos conteos que producción.
 - Pendiente: rotar `PUSH_WEBHOOK_SECRET` en producción y en el webhook de Database (el valor quedó visible en un log de una prueba anterior); revisar el PR #9 antes de mergearlo (reemplaza líneas de formularios más viejos en unos 40 archivos); probar en navegador Radar, Resumen y el cron con sesión iniciada.
+
+## Etapa 0: cierre de base (2026-10-18)
+- `0028_cierre_base.sql`: exportación de datos y baja de la cuenta (**aplicar en el SQL Editor ANTES de subir el código**, después de la 0027). Test: `supabase/tests/etapa23_test.py`.
+- `/api/salud` para monitoreo, páginas de error y 404 propias, Sentry opcional (ver `.env.example`).
+- E2E: `e2e/README.md`. Checklist operativo: `docs/ETAPA0_CIERRE.md`.
+
+## Etapa 1: Mercado Pago en la tienda (2026-10-18)
+- `0029_pagos.sql`: cobro online, reserva de stock y registro de avisos (**aplicar en el SQL Editor ANTES de subir el código**, después de la 0028). Test: `supabase/tests/etapa24_test.py`.
+- Variables nuevas en `.env.example`: `PAGOS_CIFRADO_KEY` (obligatoria para conectar), `MP_WEBHOOK_SECRET` y `APP_URL` (opcionales). Detalle y checklist: `docs/ETAPA1_PAGOS.md`.
+
+## Etapa 2A: cajeros y roles (2026-10-18)
+- `0030_equipo.sql`: miembros, invitaciones y matriz de permisos por rol (**aplicar en el SQL Editor ANTES de subir el código**, después de la 0029). Test: `supabase/tests/etapa25_test.py`. Detalle y checklist: `docs/ETAPA2A_EQUIPO.md`.
+
+## Etapa 2B: QR de Mercado Pago en la caja (2026-10-18)
+- `0031_qr_caja.sql`: cobros QR del mostrador, interruptor por local y trigger que ata cada venta "QR / Mercado Pago" a un cobro aprobado (**aplicar en el SQL Editor ANTES de subir el código**, después de la 0030). Test: `supabase/tests/etapa26_test.py`. Detalle, decisiones y checklist: `docs/ETAPA2B_QR.md`.
+
+## Etapa 3A: seguimiento del pedido (2026-10-18)
+- `0032_seguimiento.sql`: token por pedido, etapa de entrega e interruptor por local (**aplicar en el SQL Editor ANTES de subir el código**, después de la 0031). Test: `supabase/tests/etapa27_test.py`. Detalle y checklist: `docs/ETAPA3A_SEGUIMIENTO.md`.
+
+## Etapa 3C: envío por zonas (2026-10-18)
+- `0033_zonas_envio.sql`: zonas con costo y mínimo, interruptor por local y `crear_pedido` con zona (**aplicar en el SQL Editor ANTES de subir el código**, después de la 0032). Test: `supabase/tests/etapa28_test.py`. Detalle y checklist: `docs/ETAPA3C_ZONAS.md`.
+
+## Etapa 3D: fotos automáticas de productos (2026-10-18)
+
+El encargado o el dueño buscan fotos sugeridas para un producto (base de la red, Open Food Facts y, si hay clave, un buscador de imágenes), eligen una y la pueden deshacer. Nunca se cambia una foto sola; las de internet exigen confirmar derechos. Interruptor del dueño en Mi negocio, apagado por defecto. Detalle y checklist en `docs/ETAPA3D_FOTOS.md`; migración `0034_fotos_auto.sql`.

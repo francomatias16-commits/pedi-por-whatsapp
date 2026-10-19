@@ -50,3 +50,35 @@ export function rutaLegacy(search: string): string | null {
   const x = TABS.find((y) => y.tab === t);
   return x ? rutaDeTab(x.tab) : null;
 }
+
+// ───────── Roles (Etapa 2A) ─────────
+// El menú se filtra por rol. La base es la que manda (RLS y RPC): esto solo evita mostrar pantallas que fallarían.
+export type Rol = "cajero" | "encargado" | "dueno";
+export const ROLES: Rol[] = ["cajero", "encargado", "dueno"];
+export const ETIQUETA_ROL: Record<Rol, string> = { cajero: "Cajero", encargado: "Encargado", dueno: "Dueño" };
+export const DETALLE_ROL: Record<Rol, string> = {
+  cajero: "Vende y cobra en el mostrador, ve y confirma pedidos y anota fiado.",
+  encargado: "Además maneja productos, precios, stock, compras, proveedores y reportes.",
+  dueno: "Todo, incluidos los datos del local, los cobros con Mercado Pago y el equipo.",
+};
+export const esRol = (x: unknown): x is Rol => x === "cajero" || x === "encargado" || x === "dueno";
+
+// Pantallas que ve cada rol. "local" (Mi negocio) para el encargado muestra solo los resultados, sin la configuración.
+const PANTALLAS_CAJERO: Tab[] = ["caja", "pedidos", "fiado"];
+export function puedeVer(rol: Rol, t: Tab): boolean {
+  return rol === "cajero" ? PANTALLAS_CAJERO.includes(t) : true;
+}
+// Por dónde entra cada rol: el cajero cae directo en la caja.
+export const tabInicio = (rol: Rol): Tab => (rol === "cajero" ? "caja" : "resumen");
+
+// Destinos con al menos una pantalla visible, y solo con las pantallas visibles.
+export function destinosPara(rol: Rol): DestinoInfo[] {
+  return DESTINOS.map((d) => ({ ...d, subs: d.subs.filter((s) => puedeVer(rol, s.tab)) })).filter((d) => d.subs.length > 0);
+}
+
+// Qué partes de Mi negocio y de la caja puede tocar cada uno.
+export const puedeConfigurarLocal = (rol: Rol): boolean => rol === "dueno";
+export const puedeAdministrarCaja = (rol: Rol): boolean => rol !== "cajero"; // atajos, ofertas, carga de mercadería
+export const puedeCorregirFiado = (rol: Rol): boolean => rol !== "cajero";
+// El cajero siempre necesita un supervisor para anular o devolver, aunque el local tenga esa opción apagada.
+export const exigeSupervisor = (rol: Rol): boolean => rol === "cajero";

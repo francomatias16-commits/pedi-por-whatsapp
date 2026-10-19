@@ -10,7 +10,9 @@
     "test:importar": "node tests/importar.test.mjs",
     "test:horario": "node tests/horario.test.mjs",
     "test:fotos": "node tests/fotos.test.mjs",
-    "test": "npm run test:importar && npm run test:horario && npm run test:fotos && npm run test:push && npm run test:pos && npm run test:compras && npm run test:etiquetas && npm run test:fidelidad && npm run test:reposicion && npm run test:margen && npm run test:fiado && npm run test:fuga && npm run test:modificados && npm run test:conteo && npm run test:pedidos && npm run test:errores && npm run test:navegacion && npm run test:modo",
+    "test:fotos-sug": "node tests/fotos-sugerencias.test.mjs",
+    "test:fotos-desc": "node tests/fotos-descarga.test.mjs",
+    "test": "npm run test:importar && npm run test:horario && npm run test:fotos && npm run test:fotos-sug && npm run test:fotos-desc && npm run test:push && npm run test:pos && npm run test:compras && npm run test:etiquetas && npm run test:fidelidad && npm run test:reposicion && npm run test:margen && npm run test:fiado && npm run test:fuga && npm run test:modificados && npm run test:conteo && npm run test:pedidos && npm run test:errores && npm run test:navegacion && npm run test:modo && npm run test:cierre && npm run test:pagos && npm run test:roles && npm run test:qr && npm run test:seguimiento && npm run test:zonas",
     "test:navegacion": "node tests/navegacion.test.mjs",
     "test:modo": "node tests/modo.test.mjs",
     "test:push": "node tests/push.test.mjs",
@@ -26,9 +28,17 @@
     "check:migraciones": "node scripts/check-migraciones.mjs",
     "test:conteo": "node tests/conteo.test.mjs",
     "test:pedidos": "node tests/pedidos-proveedor.test.mjs",
-    "test:errores": "node tests/errores.test.mjs"
+    "test:errores": "node tests/errores.test.mjs",
+    "test:cierre": "node tests/cierre-base.test.mjs",
+    "test:roles": "node tests/roles.test.mjs",
+    "test:pagos": "node tests/pagos.test.mjs",
+    "test:e2e": "playwright test",
+    "test:qr": "node tests/qr.test.mjs",
+    "test:seguimiento": "node tests/seguimiento.test.mjs",
+    "test:zonas": "node tests/zonas.test.mjs"
   },
   "dependencies": {
+    "@sentry/nextjs": "^8.55.2",
     "@supabase/supabase-js": "^2.45.0",
     "@zxing/browser": "^0.2.1",
     "@zxing/library": "^0.23.0",
@@ -40,6 +50,7 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@types/node": "^20.14.0",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^18.3.3",
