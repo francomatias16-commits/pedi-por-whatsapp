@@ -4,8 +4,8 @@ self.addEventListener("push", (event) => {
   try { datos = event.data ? event.data.json() : {}; } catch { datos = { title: "Go Fluxo", body: event.data?.text() }; }
   event.waitUntil(self.registration.showNotification(datos.title || "Go Fluxo", {
     body: datos.body || "Tenés novedades en tu kiosco",
-    icon: "/icon-192.png",
-    badge: "/icon-192.png",
+    icon: "/icons/gofluxo-192.png",
+    badge: "/icons/gofluxo-192.png",
     tag: datos.tag || "pedido-nuevo",
     renotify: true,
     data: { url: datos.url || "/panel" },
