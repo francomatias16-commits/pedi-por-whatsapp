@@ -14,7 +14,7 @@ export default function BannerReponer({ kiosco, onIr }: { kiosco: Kiosco; onIr: 
   if (!n || n.agotados + n.bajos === 0) return null;
   return (
     <div className="card row" role="status">
-      <span>Hay <b style={{ color: n.agotados ? "#c0392b" : undefined }}>{n.agotados}</b> agotado{n.agotados === 1 ? "" : "s"} y <b>{n.bajos}</b> por acabarse</span>
+      <span>Hay <b style={{ color: n.agotados ? "var(--danger)" : undefined }}>{n.agotados}</b> agotado{n.agotados === 1 ? "" : "s"} y <b>{n.bajos}</b> por acabarse</span>
       <button onClick={onIr}>Ver qué pedir</button>
     </div>
   );

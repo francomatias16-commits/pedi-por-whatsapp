@@ -88,5 +88,14 @@ eq("horas flojas: con una campaña por compra activa sí", F.hayBaseDeSellos([{ 
 
 eq("mensaje conocido", F.mensajeFidelidad("sellos_insuficientes"), "No alcanzan los sellos.");
 eq("mensaje desconocido", F.mensajeFidelidad("boom").startsWith("No se pudo"), true);
+// 0053: descuento en % con tope en pesos
+eq("pct 10 con tope 300 sobre 5000 (el 10% da 500, se topa en 300 = 6%)", F.pctDePremio({ tipo: "pct", valor: 10, tope_pesos: 300 }, 5000), 6);
+eq("pct 10 con tope 300 sobre 2000 (el 10% da 200, no llega al tope)", F.pctDePremio({ tipo: "pct", valor: 10, tope_pesos: 300 }, 2000), 10);
+eq("pct sin tope sigue igual", F.pctDePremio({ tipo: "pct", valor: 10, tope_pesos: null }, 5000), 10);
+eq("validar: tope cero se rechaza", F.validarPremio({ ...F.PREMIO_VACIO, nombre: "x", tipo: "pct", valor: "10", tope: "0" }) !== null, true);
+eq("validar: tope vacío está bien", F.validarPremio({ ...F.PREMIO_VACIO, nombre: "x", tipo: "pct", valor: "10", tope: "" }), null);
+eq("premioDesdeForm guarda el tope solo en %", F.premioDesdeForm({ ...F.PREMIO_VACIO, nombre: "x", tipo: "pct", valor: "10", tope: "300" }).tope_pesos, 300);
+eq("premioDesdeForm sin tope en monto", F.premioDesdeForm({ ...F.PREMIO_VACIO, nombre: "x", tipo: "monto", valor: "100", tope: "300" }).tope_pesos, null);
+eq("describir incluye el tope", F.describirPremio({ id: "", activo: true, nombre: "x", descripcion: null, costo_sellos: 5, tipo: "pct", producto_id: null, valor: 10, tope_pesos: 300 }).includes("hasta"), true);
 console.log(fallos ? `\n${fallos} fallos` : "\nfidelidad: todo OK");
 process.exit(fallos ? 1 : 0);

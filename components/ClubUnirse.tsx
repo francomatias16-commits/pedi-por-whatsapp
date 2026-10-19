@@ -7,7 +7,7 @@ import { mensajeErrorSql } from "@/lib/errores";
 import { linkWhatsApp, normalizarTelefonoAR } from "@/lib/whatsapp";
 
 // Pantalla del QR del mostrador. Se usa una sola vez: después, escanear de nuevo lleva directo a la tarjeta guardada en el celular.
-export default function ClubUnirse({ slug, datos }: { slug: string; datos: DatosClub | null }) {
+export default function ClubUnirse({ slug, datos, refAmigo = "" }: { slug: string; datos: DatosClub | null; refAmigo?: string }) {
   const router = useRouter();
   const [nombre, setNombre] = useState("");
   const [tel, setTel] = useState("");
@@ -35,7 +35,7 @@ export default function ClubUnirse({ slug, datos }: { slug: string; datos: Datos
     if (err) return setMsg(err);
     setOcupado(true); setMsg("");
     try {
-      const r = await fetch("/api/club/unirse", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ slug, nombre, telefono: tel }) });
+      const r = await fetch("/api/club/unirse", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ slug, nombre, telefono: tel, ref: refAmigo || undefined }) });
       const j = await r.json();
       if (!r.ok) return setMsg(mensajeErrorSql(j.error, "club"));
       if (j.estado === "ya_registrado") return setYaTiene(true);
@@ -60,6 +60,7 @@ export default function ClubUnirse({ slug, datos }: { slug: string; datos: Datos
       <p className="mut">{datos.nombre}</p>
       <h1>Sumá sellos con cada compra</h1>
       {textoPromesa(datos) && <p>{textoPromesa(datos)}</p>}
+      {refAmigo && <p className="mut">Te invitó un amigo: si el local tiene activa la opción “Traé un amigo”, los dos suman sellos al registrarte.</p>}
       <form onSubmit={enviar} className="card">
         <label>Tu nombre<input value={nombre} onChange={(e) => setNombre(e.target.value)} autoComplete="given-name" maxLength={60} /></label>
         <label>Tu teléfono<input value={tel} onChange={(e) => setTel(e.target.value)} inputMode="tel" autoComplete="tel" placeholder="Con característica, ej: 11 5555 1234" /></label>

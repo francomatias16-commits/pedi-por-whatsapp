@@ -100,5 +100,42 @@ ok("el QR de registro usa la promesa", leer("../components/ClubUnirse.tsx").incl
 ok("el panel avisa cuando el sello rechazado ya se canjeó", leer("../components/sellos/Club.tsx").includes("descubierto"));
 ok("el test SQL del club existe", existsSync(new URL("../supabase/tests/club_test.py", import.meta.url)));
 
+// cómo pagó (0043)
+ok("medios válidos", C.esMedioClub("efectivo") && C.esMedioClub("transferencia") && C.esMedioClub("mercadopago") && !C.esMedioClub("bitcoin") && !C.esMedioClub(undefined));
+ok("solo los medios con comprobante se verifican", C.esMedioDigital("transferencia") && C.esMedioDigital("mercadopago") && !C.esMedioDigital("efectivo") && !C.esMedioDigital(null));
+const avT = C.armarAvisoClub({ cliente: "Marta", cantidad: 1, nuevo: false, medio: "transferencia" }, new Date("2026-10-19T17:32:00Z"));
+ok("aviso digital pide verificar", avT.title.startsWith("Verificá: Marta") && avT.title.includes("transferencia") && avT.body.startsWith("14:32"));
+ok("aviso Mercado Pago", C.armarAvisoClub({ cliente: "Ana", cantidad: 1, nuevo: false, medio: "mercadopago" }).title.includes("Mercado Pago"));
+ok("aviso digital no se pisa con el de efectivo", avT.tag !== "club" && C.armarAvisoClub({ cliente: "Marta", cantidad: 1, nuevo: false, medio: "efectivo" }).tag === "club");
+eq("aviso de efectivo no cambia", C.armarAvisoClub({ cliente: "Marta", cantidad: 1, nuevo: false, medio: "efectivo" }).title, "Marta sumó un sello");
+eq("el alta de un cliente nuevo siempre es aviso normal", C.armarAvisoClub({ cliente: "Luis", cantidad: 1, nuevo: true, medio: "transferencia" }).title, "Luis se sumó al club");
+const mig43 = leer("../supabase/migrations/0043_club_medio_pago.sql");
+ok("0043: sin DROP y con permisos de verificar", !/\bdrop\b/i.test(mig43.replace(/--.*$/gm, "")) && mig43.includes("grant execute on function public.club_verificar(uuid) to authenticated"));
+ok("0043: club_sumar con medio es público", mig43.includes("grant execute on function public.club_sumar(text, text) to anon, authenticated"));
+ok("la ruta pide un medio válido", leer("../app/api/club/sumar/route.ts").includes("esMedioClub"));
+ok("la tarjeta ofrece los tres medios", ["efectivo", "transferencia", "mercadopago"].every((m) => leer("../components/ClubTarjeta.tsx").includes(`sumar("${m}")`)));
+ok("el panel permite confirmar sellos digitales", leer("../components/sellos/Club.tsx").includes("club_verificar"));
+
+// Talonario de papelitos (0044): el código se normaliza igual en la tarjeta y en la ruta; el alfabeto no tiene I, L, O, 0 ni 1.
+eq("papelito: se normaliza con minúsculas, espacios y guiones", C.normalizarCodigoClub(" ab-cd 23 "), "ABCD23");
+ok("papelito: el formato acepta 6 caracteres del alfabeto", C.CODIGO_CLUB_RE.test("ABCD23") && C.CODIGO_CLUB_RE.test("KMNPQR"));
+ok("papelito: no acepta I, L, O, 0 ni 1", !C.CODIGO_CLUB_RE.test("ABCDIL") && !C.CODIGO_CLUB_RE.test("ABCDO0") && !C.CODIGO_CLUB_RE.test("ABCD1Z"));
+ok("papelito: no acepta menos ni más de 6", !C.CODIGO_CLUB_RE.test("ABCDE") && !C.CODIGO_CLUB_RE.test("ABCDEFG"));
+const rutaSumar = leer("../app/api/club/sumar/route.ts");
+ok("la ruta manda el papelito a la función", rutaSumar.includes("p_codigo: cod || null"));
+ok("la ruta responde 409 cuando la función devuelve _error", rutaSumar.includes("if (r._error)") && rutaSumar.includes("status: 409"));
+const errs = leer("../lib/errores.ts");
+ok("todos los errores de papelito tienen mensaje", ["club_codigo_requerido", "club_codigo_invalido", "club_codigo_usado", "club_codigo_bloqueado"].every((c) => errs.includes(`\"${c}\"`) || errs.includes(`"${c}"`)));
+ok("la tarjeta pide el papelito solo si el local lo exige", leer("../components/ClubTarjeta.tsx").includes("t.exige_codigo ? setPidiendoCodigo(true)"));
+ok("la migración 0044 cierra el acceso directo a los papelitos", leer("../supabase/migrations/0044_club_talonario.sql").includes("revoke all on public.club_codigos from anon, authenticated"));
+
+// Panel del talonario (0044): prender el papelito, generar, imprimir.
+const pap = leer("../components/sellos/PapelitosClub.tsx");
+ok("el panel incluye el talonario en Puntos → Club", leer("../components/sellos/Club.tsx").includes("<PapelitosClub kiosco={kiosco} />"));
+ok("el panel prende y apaga el papelito con la función del dueño", pap.includes('rpc("club_configurar_codigos"'));
+ok("el panel genera con la función del lote y valida 1..200", pap.includes('rpc("club_generar_codigos"') && pap.includes("n > 200"));
+ok("el panel imprime solo lo que hace falta (sin usar)", pap.includes('rpc("club_codigos_sin_usar"') && pap.includes("window.print()"));
+ok("el tope por local está en la migración", leer("../supabase/migrations/0044_club_talonario.sql").includes("v_fallos_local >= 50"));
+
 if (fallos) { console.log(`✗ ${fallos} fallo(s)`); process.exit(1); }
 console.log("club OK");
