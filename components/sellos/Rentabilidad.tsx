@@ -92,7 +92,7 @@ export default function Rentabilidad({ kiosco, onCambio }: { kiosco: Kiosco; onC
       <Sugeridas kiosco={kiosco} onCambio={onCambio} />
       <div className="card">
         <h3>Margen y tope de promociones</h3>
-        <p className="mut">El margen mínimo es la ganancia más baja que acepta el local en un producto que regala. El tope es lo máximo que puede costar en promociones en el mes, como porcentaje de las ventas.</p>
+        <p className="mut">Margen mínimo: lo menos que querés ganar en un producto con promo. Tope: lo máximo que gastás en promos en el mes, como % de las ventas.</p>
         <label>Margen mínimo (%)
           <input inputMode="decimal" value={margen} onChange={(e) => setMargen(e.target.value)} />
         </label>

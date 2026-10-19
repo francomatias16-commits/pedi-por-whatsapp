@@ -233,3 +233,78 @@ export const hayBaseDeSellos = (cs: Pick<Campana, "tipo" | "activa">[]) => cs.so
 export function mensajeFidelidad(m: string | undefined): string {
   return mensajeErrorSql(m, "fidelidad", "No se pudo completar la operación. Probá de nuevo.");
 }
+
+// ── Deshacer en Premios y Campañas ──
+// Se guarda la fila tal como estaba y un botón vuelve a ella (solo el último cambio).
+export type Deshacer = {
+  tabla: "fidelidad_premios" | "fidelidad_campanas";
+  modo: "crear" | "editar" | "borrar"; // crear → se borra lo creado; editar → se restaura la fila; borrar → se vuelve a crear
+  id: string;
+  fila: Record<string, unknown> | null; // la fila completa de antes (null al crear)
+  texto: string;
+};
+const COLUMNAS_FIJAS = ["id", "kiosco_id", "created_at"];
+/** Fila lista para un update: sin las columnas que no se tocan al restaurar. */
+export function filaParaRestaurar(fila: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(fila).filter(([k]) => !COLUMNAS_FIJAS.includes(k)));
+}
+export function textoDeshacer(modo: Deshacer["modo"], nombre: string, antes?: { activo?: boolean }, despues?: { activo?: boolean }): string {
+  if (modo === "crear") return `Se creó “${nombre}”.`;
+  if (modo === "borrar") return `Se borró “${nombre}”.`;
+  if (antes?.activo !== undefined && despues?.activo !== undefined && antes.activo !== despues.activo) return `Se ${despues.activo ? "activó" : "pausó"} “${nombre}”.`;
+  return `Se cambió “${nombre}”.`;
+}
+
+// ── Vista previa: lo que verá el cliente ──
+const lista = (xs: string[]) => (xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} y ${xs[xs.length - 1]}`);
+
+/** Frase para el cliente de una campaña en armado. Si el formulario está incompleto, avisa qué falta. */
+export function vistaPreviaCampana(f: FormCampana, nombreProducto?: string): string {
+  const err = validarCampana(f);
+  if (err) return `Todavía falta un dato: ${err}`;
+  const c = campanaDesdeForm(f);
+  const s = plural(c.sellos, "sello", "sellos");
+  let q: string;
+  switch (c.tipo) {
+    case "visita": q = `Ganás ${s} en cada compra`; break;
+    case "monto": q = `Ganás ${s} por cada ${dinero(c.por_monto ?? 0)} que gastes`; break;
+    case "producto": q = `Ganás ${s} por cada ${nombreProducto ?? "producto elegido"}`; break;
+    case "categoria": q = `Ganás ${s} por cada producto de ${c.categoria}`; break;
+    case "multiplicador": q = `Tus sellos valen x${String(c.multiplicador).replace(".", ",")}`; break;
+    case "bienvenida": q = `Ganás ${s} en tu primera compra`; break;
+    case "reactivacion": q = `Ganás ${s} si volvés después de ${c.dias_inactivo} días`; break;
+    default: q = `Recibís ${s} cuando el kiosco te los da`;
+  }
+  const cond: string[] = [];
+  if (c.tipo !== "manual") {
+    if (c.canales.length === 1) cond.push(c.canales[0] === "pedido" ? "en pedidos" : "en el mostrador");
+    if (c.medios?.length) cond.push(`pagando con ${lista(c.medios.map((m) => MEDIOS_ETQ[m]))}`);
+    if (c.dias_semana?.length) cond.push(`los ${lista(c.dias_semana.map((d) => DIAS[d].toLowerCase() + (d === 0 || d === 6 ? "s" : "")))}`);
+    if (c.hora_desde && c.hora_hasta) cond.push(`de ${hhmm(c.hora_desde)} a ${hhmm(c.hora_hasta)}`);
+    if (c.monto_minimo) cond.push(`comprando desde ${dinero(c.monto_minimo)}`);
+  }
+  if (c.desde && c.hasta) cond.push(`del ${fechaCorta(c.desde)} al ${fechaCorta(c.hasta)}`);
+  else if (c.desde) cond.push(`desde el ${fechaCorta(c.desde)}`);
+  else if (c.hasta) cond.push(`hasta el ${fechaCorta(c.hasta)}`);
+  if (c.tope_diario) cond.push(`hasta ${c.tope_diario} ${c.tope_diario === 1 ? "vez" : "veces"} por día`);
+  return `${[q, ...cond].join(", ")}.`;
+}
+
+/** Frase para el cliente de un premio en armado. */
+export function vistaPreviaPremio(f: FormPremio, nombreProducto?: string): string {
+  const err = validarPremio(f);
+  if (err) return `Todavía falta un dato: ${err}`;
+  const p = premioDesdeForm(f);
+  const base = `${p.nombre}: lo canjeás con ${plural(p.costo_sellos, "sello", "sellos")}`;
+  if (p.tipo === "producto") return `${base}. Te llevás ${nombreProducto ?? "el producto elegido"} gratis.`;
+  if (p.tipo === "pct") return `${base}. Tenés ${p.valor}% de descuento en tu compra${p.tope_pesos ? ` (hasta ${dinero(p.tope_pesos)})` : ""}.`;
+  if (p.tipo === "monto") return `${base}. Tenés ${dinero(p.valor ?? 0)} de descuento en tu compra.`;
+  return `${base}. Lo retirás en el kiosco.`;
+}
+
+/** Frase para el cliente de la regla simple del club (un premio, cada tantos sellos). */
+export function vistaPreviaMeta(nombre: string, costo: string): { texto: string; casilleros: number } {
+  const n = Number(costo), p = nombre.trim();
+  if (!p || !Number.isInteger(n) || n < 1 || n > 1000) return { texto: "Completá el premio y los sellos para ver cómo lo verá el cliente.", casilleros: 0 };
+  return { texto: `Cada compra suma sellos. Al juntar ${plural(n, "sello", "sellos")} te llevás ${p}.`, casilleros: Math.min(n, 20) };
+}

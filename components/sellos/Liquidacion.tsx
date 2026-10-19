@@ -71,7 +71,7 @@ export default function Liquidacion({ kiosco, onCambio }: { kiosco: Kiosco; onCa
     <div className="card">
       {ventana}
       <h3>Productos que no salen</h3>
-      <p className="mut">Productos con stock que no se vendieron en los últimos {dias} días. Podés ofrecerlos con descuento, como regalo con sellos, o con sellos extra al llevar dos. Una sola promoción por producto, y se pausa sola si se agota.</p>
+      <p className="mut">Productos que no se vendieron en {dias} días: ofrecelos con descuento, como regalo o con sellos extra (una promo por producto).</p>
       <label>Sin ventas hace
         <select value={dias} onChange={(e) => setDias(Number(e.target.value))}>
           <option value={30}>30 días</option><option value={60}>60 días</option><option value={90}>90 días</option>

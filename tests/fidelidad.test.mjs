@@ -97,5 +97,26 @@ eq("validar: tope vacío está bien", F.validarPremio({ ...F.PREMIO_VACIO, nombr
 eq("premioDesdeForm guarda el tope solo en %", F.premioDesdeForm({ ...F.PREMIO_VACIO, nombre: "x", tipo: "pct", valor: "10", tope: "300" }).tope_pesos, 300);
 eq("premioDesdeForm sin tope en monto", F.premioDesdeForm({ ...F.PREMIO_VACIO, nombre: "x", tipo: "monto", valor: "100", tope: "300" }).tope_pesos, null);
 eq("describir incluye el tope", F.describirPremio({ id: "", activo: true, nombre: "x", descripcion: null, costo_sellos: 5, tipo: "pct", producto_id: null, valor: 10, tope_pesos: 300 }).includes("hasta"), true);
+// Deshacer en Premios y Campañas
+eq("restaurar no toca id, kiosco ni fecha", Object.keys(F.filaParaRestaurar({ id: "1", kiosco_id: "k", created_at: "x", nombre: "n", activo: true })), ["nombre", "activo"]);
+eq("texto: crear", F.textoDeshacer("crear", "Café"), "Se creó “Café”.");
+eq("texto: borrar", F.textoDeshacer("borrar", "Café"), "Se borró “Café”.");
+eq("texto: pausar", F.textoDeshacer("editar", "Café", { activo: true }, { activo: false }), "Se pausó “Café”.");
+eq("texto: activar", F.textoDeshacer("editar", "Café", { activo: false }, { activo: true }), "Se activó “Café”.");
+eq("texto: editar sin cambio de estado", F.textoDeshacer("editar", "Café", { activo: true }, { activo: true }), "Se cambió “Café”.");
+// Vista previa para el cliente
+eq("vista campaña: sellos por monto", F.vistaPreviaCampana(f({ tipo: "monto", sellos: "2", por_monto: "1000" })), "Ganás 2 sellos por cada $1.000 que gastes.");
+eq("vista campaña: días y horario", F.vistaPreviaCampana(f({ tipo: "visita", dias_semana: [2, 4], usar_horario: true, hora_desde: "17:00", hora_hasta: "19:00" })), "Ganás 1 sello en cada compra, los martes y jueves, de 17:00 a 19:00.");
+eq("vista campaña: medio y canal", F.vistaPreviaCampana(f({ canales: ["mostrador"], medios: ["efectivo"] })), "Ganás 1 sello en cada compra, en el mostrador, pagando con efectivo.");
+eq("vista campaña: sellos dobles", F.vistaPreviaCampana(f({ tipo: "multiplicador", multiplicador: "2" })), "Tus sellos valen x2.");
+eq("vista campaña: producto con nombre", F.vistaPreviaCampana(f({ tipo: "producto", producto_id: "p1" }), "Alfajor"), "Ganás 1 sello por cada Alfajor.");
+eq("vista campaña incompleta avisa", F.vistaPreviaCampana(f({ tipo: "monto", por_monto: "" })).startsWith("Todavía falta un dato"), true);
+eq("vista premio libre", F.vistaPreviaPremio({ ...F.PREMIO_VACIO, nombre: "Café", costo_sellos: "5" }), "Café: lo canjeás con 5 sellos. Lo retirás en el kiosco.");
+eq("vista premio % con tope", F.vistaPreviaPremio({ ...F.PREMIO_VACIO, nombre: "Desc", tipo: "pct", valor: "10", tope: "300" }), "Desc: lo canjeás con 10 sellos. Tenés 10% de descuento en tu compra (hasta $300).");
+eq("vista premio producto", F.vistaPreviaPremio({ ...F.PREMIO_VACIO, nombre: "Regalo", tipo: "producto", producto_id: "p1" }, "Alfajor").includes("Alfajor gratis"), true);
+eq("vista premio incompleto avisa", F.vistaPreviaPremio({ ...F.PREMIO_VACIO, nombre: "" }).startsWith("Todavía falta un dato"), true);
+eq("vista meta", F.vistaPreviaMeta("Gaseosa", "8"), { texto: "Cada compra suma sellos. Al juntar 8 sellos te llevás Gaseosa.", casilleros: 8 });
+eq("vista meta tope de casilleros", F.vistaPreviaMeta("X", "50").casilleros, 20);
+eq("vista meta incompleta", F.vistaPreviaMeta("", "8").casilleros, 0);
 console.log(fallos ? `\n${fallos} fallos` : "\nfidelidad: todo OK");
 process.exit(fallos ? 1 : 0);

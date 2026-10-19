@@ -121,3 +121,15 @@ export function vigenciaPromo(p: Promo, hoy = hoyAR()): "vigente" | "programada"
   if (p.hasta && p.hasta < hoy) return "vencida";
   return "vigente";
 }
+
+/** Qué pasó al guardar una promoción de la caja (los códigos los lanza la migración 0056). */
+export type ErrorPromo = { tipo: "margen"; margen: number; minimo: number } | { tipo: "duplicada" } | { tipo: "otro" };
+export function interpretarErrorPromo(e: { message?: string; details?: string | null } | null | undefined): ErrorPromo {
+  const m = e?.message ?? "";
+  if (m.includes("promo_producto_duplicada")) return { tipo: "duplicada" };
+  if (m.includes("promo_reduce_margen")) {
+    const [a, b] = String(e?.details ?? "").split("|").map((x) => Number(x));
+    return { tipo: "margen", margen: Number.isFinite(a) ? a : 0, minimo: Number.isFinite(b) ? b : 20 };
+  }
+  return { tipo: "otro" };
+}

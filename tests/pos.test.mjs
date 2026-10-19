@@ -162,6 +162,12 @@ const venta = (id, cant = 1) => ({ offline_id: id, turno_id: "t", fecha: "2026-1
     { nombre: "Dulces", tipo: "pct", producto_id: null, categoria: "Golosinas", lleva: null, paga: null, pct: 15.5, desde: "2026-10-01", hasta: null });
   const pr = { id: "a", nombre: "n", tipo: "nxm", producto_id: "p1", categoria: null, lleva: 3, paga: 2, pct: null, desde: null, hasta: null, activa: true };
   eq("ida y vuelta formulario", P.filaPromo(P.formDePromo(pr)), { nombre: "n", tipo: "nxm", producto_id: "p1", categoria: null, lleva: 3, paga: 2, pct: null, desde: null, hasta: null });
+  // 0056: lo que devuelve la base al guardar una promoción
+  eq("error: producto duplicado", P.interpretarErrorPromo({ message: "promo_producto_duplicada" }), { tipo: "duplicada" });
+  eq("error: margen con detalle", P.interpretarErrorPromo({ message: "promo_reduce_margen", details: "6.7|20.00" }), { tipo: "margen", margen: 6.7, minimo: 20 });
+  eq("error: margen sin detalle usa 0 y 20", P.interpretarErrorPromo({ message: "promo_reduce_margen" }), { tipo: "margen", margen: 0, minimo: 20 });
+  eq("error: cualquier otro", P.interpretarErrorPromo({ message: "boom" }), { tipo: "otro" });
+  eq("error: sin error", P.interpretarErrorPromo(null), { tipo: "otro" });
   eq("descripción", P.describirPromo(pr, () => "Coca 500"), "Lleva 3 paga 2 · Coca 500");
   eq("vigencia", [P.vigenciaPromo({ ...pr, desde: "2026-11-01" }, "2026-10-17"), P.vigenciaPromo({ ...pr, hasta: "2026-10-01" }, "2026-10-17"), P.vigenciaPromo(pr, "2026-10-17")], ["programada", "vencida", "vigente"]);
 }

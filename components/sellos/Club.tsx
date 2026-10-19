@@ -4,7 +4,7 @@ import QRCode from "qrcode";
 import { supabase, type Kiosco } from "@/lib/supabase";
 import { ajustesDesdeForm, esMedioDigital, linkClub, nombreMedio, resumenLimites, type ActividadClub } from "@/lib/club";
 import { mensajeErrorSql } from "@/lib/errores";
-import type { Campana, Premio } from "@/lib/fidelidad";
+import { vistaPreviaMeta, type Campana, type Premio } from "@/lib/fidelidad";
 import HorasFlojas from "./HorasFlojas";
 import PremiosListos from "./PremiosListos";
 import PapelitosClub from "./PapelitosClub";
@@ -99,6 +99,8 @@ export default function Club({ kiosco, premios, campanas, onCambio }: { kiosco: 
     await cargar();
   }
 
+  const meta = vistaPreviaMeta(pNombre, pCosto);
+
   async function guardarPremio() {
     setMsg("");
     const costo = Number(pCosto), nombre = pNombre.trim();
@@ -128,7 +130,7 @@ export default function Club({ kiosco, premios, campanas, onCambio }: { kiosco: 
     <>
       <div className="card">
         <h3>Sellos de las últimas 24 horas</h3>
-        <p className="mut" style={{ marginTop: 0 }}>Cada vez que un cliente suma, te llega un aviso. Si no estaba en el local o no compró, rechazá el sello. Los de efectivo no hace falta confirmarlos; los de transferencia o Mercado Pago, mirá el comprobante y confirmalos.</p>
+        <p className="mut" style={{ marginTop: 0 }}>Cada sello nuevo te llega como aviso: rechazalo si el cliente no compró y confirmá los de transferencia o Mercado Pago.</p>
         {act === null && <p className="mut">Cargando…</p>}
         {act && act.length === 0 && <p className="mut">Todavía nadie sumó. Pegá el cartel con el QR en el mostrador (más abajo) para empezar.</p>}
         {act && act.length > 0 && <p className="mut">{hoy.length} sello{hoy.length === 1 ? "" : "s"} válido{hoy.length === 1 ? "" : "s"}{porVerificar > 0 ? ` · ${porVerificar} por verificar con comprobante` : ""}.</p>}
@@ -156,6 +158,11 @@ export default function Club({ kiosco, premios, campanas, onCambio }: { kiosco: 
         <h3>Tu premio</h3>
         <label>Qué se llevan<input value={pNombre} maxLength={80} onChange={(e) => setPNombre(e.target.value)} placeholder="Ej: Gaseosa 500 ml" /></label>
         <label>Cada cuántos sellos<input inputMode="numeric" value={pCosto} onChange={(e) => setPCosto(e.target.value)} /></label>
+        <div className="fila-sep" aria-live="polite">
+          <b>Así lo verá el cliente</b>
+          <p>{meta.texto}</p>
+          {meta.casilleros > 0 && <ol className="club-casilleros" aria-hidden="true">{Array.from({ length: meta.casilleros }, (_, i) => <li key={i} />)}</ol>}
+        </div>
         <button type="button" onClick={guardarPremio}>Guardar premio</button>
         <p className="mut">Cuando el cliente completa la tarjeta te muestra la pantalla y lo canjeás desde Clientes. Otros premios y reglas: pestañas “Cómo se suman” y “Premios”.</p>
       </div>
