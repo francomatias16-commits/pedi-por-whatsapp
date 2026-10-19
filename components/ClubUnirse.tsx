@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CLUB_TOKEN_RE, claveTokenLocal, validarRegistro, type DatosClub } from "@/lib/club";
+import { CLUB_TOKEN_RE, claveTokenLocal, textoPromesa, validarRegistro, type DatosClub } from "@/lib/club";
 import { mensajeErrorSql } from "@/lib/errores";
 import { linkWhatsApp, normalizarTelefonoAR } from "@/lib/whatsapp";
 
@@ -59,7 +59,7 @@ export default function ClubUnirse({ slug, datos }: { slug: string; datos: Datos
     <main className="club">
       <p className="mut">{datos.nombre}</p>
       <h1>Sumá sellos con cada compra</h1>
-      {datos.premio && datos.meta && <p>Juntá {datos.meta} y llevate <b>{datos.premio}</b>.</p>}
+      {textoPromesa(datos) && <p>{textoPromesa(datos)}</p>}
       <form onSubmit={enviar} className="card">
         <label>Tu nombre<input value={nombre} onChange={(e) => setNombre(e.target.value)} autoComplete="given-name" maxLength={60} /></label>
         <label>Tu teléfono<input value={tel} onChange={(e) => setTel(e.target.value)} inputMode="tel" autoComplete="tel" placeholder="Con característica, ej: 11 5555 1234" /></label>
