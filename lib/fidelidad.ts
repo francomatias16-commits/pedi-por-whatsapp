@@ -1,3 +1,4 @@
+import { mensajeErrorSql } from "./errores";
 // Fidelidad: campañas de sellos y premios. Puro y sin DOM: formularios, validaciones y textos (las reglas de verdad viven en la base, 0017).
 export type TipoCampana = "visita" | "monto" | "producto" | "categoria" | "bienvenida" | "reactivacion" | "multiplicador" | "manual";
 export type Canal = "pedido" | "mostrador";
@@ -188,20 +189,6 @@ export function pctDePremio(p: Pick<Premio, "tipo" | "valor">, totalSinPremio: n
   return Math.min(100, Math.max(0, Math.round(pct * 100) / 100));
 }
 
-export const ERRORES_FIDELIDAD: [string, string][] = [
-  ["sellos_insuficientes", "No alcanzan los sellos."],
-  ["motivo_requerido", "Escribí un motivo (al menos 3 letras)."],
-  ["cantidad_invalida", "La cantidad de sellos no es válida."],
-  ["tope_diario", "Ese cliente ya llegó al tope diario de esta acción."],
-  ["campana_inactiva", "Esa campaña no está vigente."],
-  ["campana_invalida", "Esa acción no se puede dar a mano."],
-  ["premio_invalido", "Ese premio ya no está disponible."],
-  ["venta_invalida", "No se pudo asociar el canje a la venta."],
-  ["ya_anulado", "Ya estaba anulado."],
-  ["producto_invalido", "Ese producto no es de tu kiosco."],
-  ["no_autorizado", "No tenés permiso para esto."],
-];
 export function mensajeFidelidad(m: string | undefined): string {
-  const t = m ?? "";
-  return ERRORES_FIDELIDAD.find(([k]) => t.includes(k))?.[1] ?? "No se pudo completar la operación. Probá de nuevo.";
+  return mensajeErrorSql(m, "fidelidad", "No se pudo completar la operación. Probá de nuevo.");
 }

@@ -10,7 +10,7 @@ const ui = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "70
 const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["500", "600", "700"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Pedí por WhatsApp",
+  title: "Fluxo",
   description: "Catálogo y pedidos por WhatsApp para tu kiosco o almacén",
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#14181d" };
@@ -20,12 +20,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es-AR" className={`${display.variable} ${ui.variable} ${mono.variable}`}>
       <body>
         <header className="franja">
-          <Link href="/" className="franja-marca"><span className="franja-sello" aria-hidden="true" />Pedí por WhatsApp</Link>
+          <Link href="/" className="franja-marca"><span className="franja-sello" aria-hidden="true" />Fluxo</Link>
         </header>
         <main>
           {children}
           <footer className="pie">
-            <span>Pedí por WhatsApp</span>
+            <span>Fluxo</span>
             <Link href="/terminos">Términos</Link>
             <Link href="/privacidad">Privacidad</Link>
           </footer>

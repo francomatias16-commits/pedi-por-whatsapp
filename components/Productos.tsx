@@ -24,7 +24,8 @@ export default function Productos({ kiosco }: { kiosco: Kiosco }) {
   const [nombre, setNombre] = useState("");
   const [precio, setPrecio] = useState("");
   const [cat, setCat] = useState("General");
-  const [fuente, setFuente] = useState<"global" | "openfoodfacts" | "kiosco">("kiosco");
+  // La fuente del último dato hallado se guarda, pero todavía no se muestra en pantalla.
+  const [, setFuente] = useState<"global" | "openfoodfacts" | "kiosco">("kiosco");
   const [escaneando, setEscaneando] = useState(false);
   const [rafaga, setRafaga] = useState(true);
   const [aviso, setAviso] = useState("");

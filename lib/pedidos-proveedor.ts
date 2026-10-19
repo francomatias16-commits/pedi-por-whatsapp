@@ -1,4 +1,5 @@
 import { cantidadDesdeTexto, cantidadTexto, type LineaCompra } from "./compras";
+import { mensajeErrorSql } from "./errores";
 
 // Pedidos a proveedor como documento (0027). Por peso las cantidades van en gramos, igual que compras.
 export type EstadoPedido = "borrador" | "enviada" | "recibida_parcial" | "recibida" | "cancelada";
@@ -55,14 +56,4 @@ export function lineasParaCompra(items: ItemPedido[], recibido: { item_id: strin
   return out;
 }
 
-export const ERRORES_PEDIDO: [string, string][] = [
-  ["pedido_no_encontrado", "No encontramos ese pedido."],
-  ["pedido_estado_invalido", "Ese pedido ya cambió de estado. Actualizá la pantalla."],
-  ["recepcion_excede_pendiente", "No podés recibir más de lo que falta de ese pedido."],
-  ["items_invalidos", "Revisá las líneas del pedido."],
-  ["cantidad_invalida", "Revisá las cantidades."],
-  ["producto_no_encontrado", "Uno de los productos ya no existe."],
-  ["proveedor_no_encontrado", "No encontramos a ese proveedor."],
-  ["no_autorizado", "No tenés permiso para hacer esto."],
-];
-export const mensajePedido = (m: string) => ERRORES_PEDIDO.find(([k]) => m.includes(k))?.[1] ?? "No se pudo completar la operación.";
+export const mensajePedido = (m: string) => mensajeErrorSql(m, "pedidos");

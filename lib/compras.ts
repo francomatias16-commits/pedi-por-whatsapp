@@ -1,3 +1,4 @@
+import { mensajeErrorSql } from "./errores";
 // Proveedores y compras (0015). El cálculo espeja a registrar_compra: por peso la cantidad va en gramos y el costo es por kg.
 export type Proveedor = { id: string; nombre: string; telefono: string | null; cuit: string | null; notas: string | null; activo: boolean; saldo: number; ultimo_movimiento: string | null };
 export type LineaCompra = { producto_id: string; nombre: string; por_peso: boolean; cantidad: number; costo: number };
@@ -16,22 +17,4 @@ export function cantidadDesdeTexto(texto: string, porPeso: boolean): number | nu
 }
 export const cantidadTexto = (cant: number, porPeso: boolean) => (porPeso ? `${(cant / 1000).toLocaleString("es-AR", { maximumFractionDigits: 3 })} kg` : String(cant));
 
-export const ERRORES_COMPRAS: [string, string][] = [
-  ["no_autorizado", "No tenés permiso para esta operación."],
-  ["proveedor_duplicado", "Ya tenés un proveedor con ese nombre."],
-  ["nombre_invalido", "Escribí el nombre del proveedor (hasta 80 letras)."],
-  ["proveedor_no_encontrado", "Ese proveedor ya no existe. Actualizá la página."],
-  ["producto_no_encontrado", "Un producto de la compra ya no existe. Actualizá la página."],
-  ["items_invalidos", "Agregá al menos un producto a la compra."],
-  ["cantidad_invalida", "Revisá las cantidades."],
-  ["costo_invalido", "Falta el costo de algún producto."],
-  ["monto_invalido", "Revisá el monto: tiene que ser mayor a cero."],
-  ["pago_excede_total", "Lo que pagás ahora no puede superar el total de la compra."],
-  ["medio_pago_invalido", "Ese medio de pago no es válido."],
-  ["ya_anulada", "Esa compra ya estaba anulada."],
-  ["stock_insuficiente", "No se puede anular: ya se vendió parte de esa mercadería."],
-  ["stock_no_controlado", "Ese producto no controla stock. Activalo desde Productos."],
-  ["motivo_requerido", "Indicá el motivo (mínimo 3 letras)."],
-  ["sin_cambios", "El stock nuevo es igual al actual."],
-];
-export const mensajeCompras = (m: string) => ERRORES_COMPRAS.find(([k]) => m.includes(k))?.[1] ?? "No se pudo completar la operación.";
+export const mensajeCompras = (m: string) => mensajeErrorSql(m, "compras");

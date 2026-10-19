@@ -20,7 +20,7 @@ export function nombreArchivo(slug: string, ahora = new Date()) {
 }
 
 // Fecha desde la cual se borran los datos de una baja (30 días, igual que kioscos_purgar_bajas).
-export const DIAS_ANTES_DE_BORRAR = 30;
+const DIAS_ANTES_DE_BORRAR = 30;
 export function fechaDeBorrado(bajaISO: string): Date {
   const d = new Date(bajaISO);
   d.setDate(d.getDate() + DIAS_ANTES_DE_BORRAR);

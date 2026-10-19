@@ -2,8 +2,9 @@
 import ts from "typescript";
 import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
+import { inlinarErrores } from "./_errores.mjs";
 const cargar = async (rel, reemplazos = {}) => {
-  let src = readFileSync(new URL("../lib/" + rel, import.meta.url), "utf8");
+  let src = inlinarErrores(readFileSync(new URL("../lib/" + rel, import.meta.url), "utf8"));
   for (const [a, b] of Object.entries(reemplazos)) src = src.replace(a, b);
   const js = ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
   return import("data:text/javascript;base64," + Buffer.from(js).toString("base64"));

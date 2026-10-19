@@ -3,7 +3,7 @@ import { useConfirmar } from "@/components/ui/Confirmar";
 import { useCallback, useEffect, useState } from "react";
 import { supabase, type Kiosco } from "@/lib/supabase";
 import { peso } from "@/lib/whatsapp";
-import { margenPct, productosMargenBajo } from "@/lib/margen";
+import { productosMargenBajo } from "@/lib/margen";
 import Pantalla from "@/components/ui/Pantalla";
 import Aviso from "@/components/ui/Aviso";
 

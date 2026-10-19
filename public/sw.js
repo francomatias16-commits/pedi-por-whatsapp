@@ -1,8 +1,8 @@
 // Service worker de avisos push. Muestra el aviso aunque la app esté cerrada.
 self.addEventListener("push", (event) => {
   let datos = {};
-  try { datos = event.data ? event.data.json() : {}; } catch { datos = { title: "Pedí por WhatsApp", body: event.data?.text() }; }
-  event.waitUntil(self.registration.showNotification(datos.title || "Pedí por WhatsApp", {
+  try { datos = event.data ? event.data.json() : {}; } catch { datos = { title: "Fluxo", body: event.data?.text() }; }
+  event.waitUntil(self.registration.showNotification(datos.title || "Fluxo", {
     body: datos.body || "Tenés novedades en tu kiosco",
     icon: "/icon-192.png",
     badge: "/icon-192.png",

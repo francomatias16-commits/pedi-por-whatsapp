@@ -1,6 +1,13 @@
 // Mensajes amigables para los códigos que las funciones SQL lanzan con "raise exception 'codigo'".
-// Cada código de las migraciones tiene que estar acá o en la lista de su módulo (lo verifica tests/errores.test.mjs).
-export const ERRORES_SQL: [string, string][] = [
+// Un solo lugar para todos los módulos:
+//  - ERRORES_SQL: el texto general de cada código.
+//  - ERRORES_CONTEXTO: solo si una pantalla o módulo necesita otro texto para un código (se mira primero).
+// Cada código de las migraciones tiene que estar acá (lo verifica tests/errores.test.mjs).
+// Los mapas de respuestas de API (Mercado Pago, fotos, QR) son otra cosa y siguen en sus componentes.
+
+export type ParError = [string, string];
+
+export const ERRORES_SQL: ParError[] = [
   ["baja_fuera_de_orden", "Para dar de baja vencidos, primero descontá el lote que vence antes."],
   ["cantidad_mayor_al_lote", "La cantidad es mayor a lo que queda en ese lote."],
   ["lote_mayor_al_stock", "El lote no puede tener más unidades que el stock del producto."],
@@ -33,7 +40,6 @@ export const ERRORES_SQL: [string, string][] = [
   ["pago_invalido", "Ese pago no corresponde a este pedido."],
   ["pedido_no_encontrado", "No encontramos ese pedido."],
   ["evento_invalido", "El aviso de pago no es válido."],
-  // Equipo del kiosco (0030)
   ["rol_invalido", "Ese rol no es válido. Elegí cajero o encargado."],
   ["demasiadas_invitaciones", "Ya hay 20 invitaciones sin usar. Cancelá alguna o esperá a que venzan."],
   ["equipo_lleno", "El equipo llegó al máximo de 30 personas."],
@@ -43,24 +49,20 @@ export const ERRORES_SQL: [string, string][] = [
   ["ya_tiene_local", "Tu cuenta ya forma parte de otro local. Una cuenta puede estar en un solo local a la vez."],
   ["ya_es_miembro", "Ya sos parte de este local."],
   ["supervisor_requerido", "Para anular o devolver, el dueño tiene que configurar un PIN de supervisor en Impresora y ajustes."],
-  // QR de Mercado Pago en la caja (0031)
   ["qr_inactivo", "El cobro con QR está apagado en este local."],
   ["qr_sin_config", "El QR del local no está listo. Revisalo en Mi negocio, Cobrar con Mercado Pago."],
   ["qr_monto_invalido", "El cobro con QR tiene que ser de $15 o más."],
   ["qr_ocupado", "Ya hay otro cobro con QR esperando el pago. Esperá que termine o cancelalo."],
-  ["qr_sin_cobro", "Esa venta dice QR pero no hay un cobro aprobado por ese monto. Cobrá primero con \"Cobrar con QR\" o elegí otro medio."],
+  ["qr_sin_cobro", "Esa venta dice QR pero no hay un cobro aprobado por ese monto. Cobrá primero con \\\"Cobrar con QR\\\" o elegí otro medio."],
   ["cobro_no_encontrado", "No encontramos ese cobro."],
-  // Seguimiento del pedido (0032)
   ["token_protegido", "El link de seguimiento no se puede cambiar."],
   ["entrega_estado_invalido", "Solo se puede marcar listo o en camino un pedido confirmado: listo para retiros, en camino para envíos."],
-  // Envío por zonas (0033)
   ["zona_requerida", "Elegí a qué zona va el envío."],
   ["zona_invalida", "Esa zona ya no está disponible. Elegí otra."],
   ["zona_nombre_invalido", "Escribí un nombre para la zona."],
   ["zona_costo_invalido", "El costo y el pedido mínimo tienen que ser números de cero en adelante, con hasta dos decimales."],
   ["zona_repetida", "Ya tenés una zona con ese nombre."],
   ["zona_no_encontrada", "No encontramos esa zona."],
-  // Ventana de entrega (0036)
   ["franja_requerida", "Elegí en qué franja querés recibir el pedido."],
   ["franja_invalida", "Esa franja ya no está disponible. Elegí otra."],
   ["franja_nombre_invalido", "Escribí un nombre para la franja."],
@@ -71,7 +73,6 @@ export const ERRORES_SQL: [string, string][] = [
   ["sin_franjas", "Cargá al menos una franja disponible antes de encender esta opción."],
   ["zonas_maximas", "Llegaste al máximo de 30 zonas."],
   ["sin_zonas", "Para encender el envío por zonas, primero cargá al menos una zona activa."],
-  // Fotos automáticas (0034)
   ["foto_invalida", "Esa foto no se puede usar. Probá con otra."],
   ["derechos_requeridos", "Para usar una foto de internet tenés que confirmar que podés usarla."],
   ["foto_producto_invalido", "No encontramos ese producto en tu local."],
@@ -79,9 +80,147 @@ export const ERRORES_SQL: [string, string][] = [
   ["foto_cambio_posterior", "Después de ese cambio la foto se modificó otra vez, así que no se puede deshacer."],
   ["foto_vencida", "Ya pasó el plazo para deshacer ese cambio de foto."],
   ["limite_fotos", "Llegaste al tope de búsquedas en internet de hoy. Probá mañana o subí la foto vos."],
+  ["turno_abierto", "Ya hay una caja abierta."],
+  ["turno_cerrado", "La caja está cerrada."],
+  ["monto_invalido", "Revisá el monto: tiene que ser un número válido."],
+  ["tipo_invalido", "Tipo de movimiento inválido."],
+  ["no_autorizado", "No tenés permiso para esta caja."],
+  ["sin_stock", "Alguno de los productos no tiene stock suficiente."],
+  ["pago_insuficiente", "El pago no alcanza para cubrir el total."],
+  ["pago_excede_total", "Lo que no es efectivo no puede pasar el total. El vuelto sale solo de efectivo."],
+  ["medio_pago_invalido", "Ese medio de pago no está disponible."],
+  ["producto_no_encontrado", "Un producto del carrito ya no existe. Actualizá la página."],
+  ["cantidad_invalida", "Revisá las cantidades del carrito (hasta 99 unidades o 99,999 kg)."],
+  ["fecha_invalida", "La fecha de la venta no es válida."],
+  ["pin_requerido", "Hace falta el PIN de supervisor."],
+  ["tiene_devoluciones", "Esa venta ya tiene devoluciones: no se puede anular."],
+  ["devolucion_excede_venta", "No se puede devolver más de lo que se vendió."],
+  ["efectivo_insuficiente", "No hay tanto efectivo en la caja para devolver."],
+  ["sin_turno_abierto", "Abrí la caja para registrar la devolución."],
+  ["ya_anulada", "Esa venta ya estaba anulada."],
+  ["motivo_requerido", "Indicá el motivo de la anulación (mínimo 3 letras)."],
+  ["descuento_invalido", "El descuento tiene que estar entre 0 y 100%."],
+  ["cuenta_corriente_sin_cliente", "Para cobrar a cuenta corriente elegí un cliente."],
+  ["cliente_no_encontrado", "Ese cliente ya no existe."],
+  ["items_invalidos", "Elegí al menos un producto para devolver."],
+  ["item_no_encontrado", "Uno de los productos ya no figura en esa venta. Volvé a abrir la devolución."],
+  ["venta_sin_cuenta_corriente", "Esa venta no se cobró a cuenta corriente: elegí otro medio para devolver."],
+  ["devolucion_excede_cuenta_corriente", "No se puede devolver a cuenta corriente más de lo que se cobró por ahí."],
+  ["pin_invalido", "El PIN tiene que ser de 4 a 8 números."],
+  ["sangria_excede_efectivo", "No hay tanto efectivo en la caja para retirar."],
+  ["sellos_insuficientes", "No alcanzan los sellos."],
+  ["tope_diario", "Ese cliente ya llegó al tope diario de esta acción."],
+  ["campana_inactiva", "Esa campaña no está vigente."],
+  ["campana_invalida", "Esa acción no se puede dar a mano."],
+  ["premio_invalido", "Ese premio ya no está disponible."],
+  ["venta_invalida", "No se pudo asociar el canje a la venta."],
+  ["ya_anulado", "Ya estaba anulado."],
+  ["producto_invalido", "Ese producto no es de tu kiosco."],
+  ["pedido_estado_invalido", "Ese pedido ya cambió de estado. Actualizá la pantalla."],
+  ["recepcion_excede_pendiente", "No podés recibir más de lo que falta de ese pedido."],
+  ["proveedor_no_encontrado", "No encontramos a ese proveedor."],
+  ["proveedor_duplicado", "Ya tenés un proveedor con ese nombre."],
+  ["nombre_invalido", "Escribí el nombre del proveedor (hasta 80 letras)."],
+  ["costo_invalido", "Falta el costo de algún producto."],
+  ["stock_insuficiente", "No se puede anular: ya se vendió parte de esa mercadería."],
+  ["stock_no_controlado", "Ese producto no controla stock. Activalo desde Productos."],
+  ["sin_cambios", "El stock nuevo es igual al actual."],
+  ["tipo_ajuste_invalido", "Elegí un motivo de la lista."],
+  ["producto_no_disponible", "Algún producto ya no está disponible. Actualizá la página y armá el pedido de nuevo."],
+  ["envio_invalido", "Este local no hace envíos, o falta la dirección."],
+  ["telefono_invalido", "Revisá el número de WhatsApp."],
+  ["kiosco_no_encontrado", "No encontramos este local."],
+  ["local_cerrado", "El local está cerrado por ahora. Probá más tarde."],
+  ["fuera_de_horario", "El local está fuera de su horario de atención. Probá cuando abra."],
+  ["minimo_no_alcanzado", "No llegás al monto mínimo del pedido."],
+  ["demasiados_pedidos", "Ya enviaste varios pedidos hace un momento. Esperá unos minutos."],
+  ["local_saturado", "El local recibió muchos pedidos juntos. Probá en unos minutos."],
 ];
 
+export const ERRORES_CONTEXTO = {
+  caja: [
+  ["turno_abierto", "Ya hay una caja abierta."],
+  ["turno_cerrado", "La caja está cerrada."],
+  ["monto_invalido", "Revisá el monto: tiene que ser un número válido."],
+  ["tipo_invalido", "Tipo de movimiento inválido."],
+  ["no_autorizado", "No tenés permiso para esta caja."],
+  ["sin_stock", "Alguno de los productos no tiene stock suficiente."],
+  ["pago_insuficiente", "El pago no alcanza para cubrir el total."],
+  ["pago_excede_total", "Lo que no es efectivo no puede pasar el total. El vuelto sale solo de efectivo."],
+  ["medio_pago_invalido", "Ese medio de pago no está disponible."],
+  ["producto_no_encontrado", "Un producto del carrito ya no existe. Actualizá la página."],
+  ["cantidad_invalida", "Revisá las cantidades del carrito (hasta 99 unidades o 99,999 kg)."],
+  ["fecha_invalida", "La fecha de la venta no es válida."],
+  ["pin_requerido", "Hace falta el PIN de supervisor."],
+  ["tiene_devoluciones", "Esa venta ya tiene devoluciones: no se puede anular."],
+  ["devolucion_excede_venta", "No se puede devolver más de lo que se vendió."],
+  ["efectivo_insuficiente", "No hay tanto efectivo en la caja para devolver."],
+  ["sin_turno_abierto", "Abrí la caja para registrar la devolución."],
+  ["ya_anulada", "Esa venta ya estaba anulada."],
+  ["motivo_requerido", "Indicá el motivo de la anulación (mínimo 3 letras)."],
+  ["descuento_invalido", "El descuento tiene que estar entre 0 y 100%."],
+  ["cuenta_corriente_sin_cliente", "Para cobrar a cuenta corriente elegí un cliente."],
+  ["cliente_no_encontrado", "Ese cliente ya no existe."],
+  ["items_invalidos", "Elegí al menos un producto para devolver."],
+  ["item_no_encontrado", "Uno de los productos ya no figura en esa venta. Volvé a abrir la devolución."],
+  ["venta_sin_cuenta_corriente", "Esa venta no se cobró a cuenta corriente: elegí otro medio para devolver."],
+  ["devolucion_excede_cuenta_corriente", "No se puede devolver a cuenta corriente más de lo que se cobró por ahí."],
+  ["pin_invalido", "El PIN tiene que ser de 4 a 8 números."],
+  ["sangria_excede_efectivo", "No hay tanto efectivo en la caja para retirar."],
+  ["qr_sin_cobro", "Esa venta dice QR pero no hay un cobro aprobado por ese monto. Cobrá primero con \\\"Cobrar con QR\\\" o elegí otro medio."],
+  ],
+  fidelidad: [
+  ["motivo_requerido", "Escribí un motivo (al menos 3 letras)."],
+  ["cantidad_invalida", "La cantidad de sellos no es válida."],
+  ["no_autorizado", "No tenés permiso para esto."],
+  ],
+  pedidos: [
+  ["pedido_no_encontrado", "No encontramos ese pedido."],
+  ["pedido_estado_invalido", "Ese pedido ya cambió de estado. Actualizá la pantalla."],
+  ["recepcion_excede_pendiente", "No podés recibir más de lo que falta de ese pedido."],
+  ["items_invalidos", "Revisá las líneas del pedido."],
+  ["cantidad_invalida", "Revisá las cantidades."],
+  ["producto_no_encontrado", "Uno de los productos ya no existe."],
+  ["proveedor_no_encontrado", "No encontramos a ese proveedor."],
+  ["no_autorizado", "No tenés permiso para hacer esto."],
+  ],
+  compras: [
+  ["no_autorizado", "No tenés permiso para esta operación."],
+  ["proveedor_no_encontrado", "Ese proveedor ya no existe. Actualizá la página."],
+  ["producto_no_encontrado", "Un producto de la compra ya no existe. Actualizá la página."],
+  ["items_invalidos", "Agregá al menos un producto a la compra."],
+  ["cantidad_invalida", "Revisá las cantidades."],
+  ["monto_invalido", "Revisá el monto: tiene que ser mayor a cero."],
+  ["pago_excede_total", "Lo que pagás ahora no puede superar el total de la compra."],
+  ["medio_pago_invalido", "Ese medio de pago no es válido."],
+  ["ya_anulada", "Esa compra ya estaba anulada."],
+  ["motivo_requerido", "Indicá el motivo (mínimo 3 letras)."],
+  ],
+  reposicion: [
+  ["no_autorizado", "No tenés permiso para esta operación."],
+  ["proveedor_no_encontrado", "Ese proveedor ya no existe. Actualizá la página."],
+  ["cantidad_invalida", "Revisá la cantidad."],
+  ["motivo_requerido", "Escribí un motivo de al menos 3 letras."],
+  ],
+  checkout: [
+  ["sin_stock", "Se acabó alguno de los productos del pedido. Revisá el carrito y armalo de nuevo."],
+  ["nombre_invalido", "Poné tu nombre."],
+  ["medio_pago_invalido", "Ese medio de pago no está disponible. Elegí otro."],
+  ],
+  fiado: [
+  ["sin_cliente", "Este pedido no tiene un cliente asociado. Anotalo a mano en Fiado."],
+  ["estado_invalido", "Primero confirmá el pedido."],
+  ["monto_invalido", "El pedido no tiene un total para anotar."],
+  ],
+} satisfies Record<string, ParError[]>;
 
-/** Traduce el mensaje de error de Supabase/Postgres a un texto para el dueño. Si no se reconoce, devuelve un texto genérico. */
-export const mensajeErrorSql = (m: string, extra: [string, string][] = []) =>
-  [...extra, ...ERRORES_SQL].find(([k]) => m.includes(k))?.[1] ?? "No se pudo completar la operación.";
+export type Contexto = keyof typeof ERRORES_CONTEXTO;
+
+const GENERICO = "No se pudo completar la operación.";
+
+/** Traduce el mensaje de error de Supabase/Postgres a un texto para la persona. Primero mira el contexto (si lo hay), después el general. */
+export function mensajeErrorSql(m: string | undefined, contexto?: Contexto | ParError[], fallback: string = GENERICO): string {
+  const t = m ?? "";
+  const extra: ParError[] = Array.isArray(contexto) ? contexto : contexto ? ERRORES_CONTEXTO[contexto] : [];
+  return [...extra, ...ERRORES_SQL].find(([k]) => t.includes(k))?.[1] ?? fallback;
+}

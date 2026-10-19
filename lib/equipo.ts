@@ -18,7 +18,7 @@ export function tokenDeRuta(pathname: string): string | null {
 
 const ARTICULO: Record<string, string> = { cajero: "como cajero", encargado: "como encargado" };
 export function mensajeInvitacion(nombreLocal: string, rol: Exclude<Rol, "dueno">, link: string): string {
-  return `Hola. Te invito a sumarte a ${nombreLocal} ${ARTICULO[rol]} en Pedí por WhatsApp. Entrá con tu cuenta de Google desde este enlace (sirve una sola vez y vence en 7 días): ${link}`;
+  return `Hola. Te invito a sumarte a ${nombreLocal} ${ARTICULO[rol]} en Fluxo. Entrá con tu cuenta de Google desde este enlace (sirve una sola vez y vence en 7 días): ${link}`;
 }
 
 // Días que le quedan a una invitación (0 si ya venció).

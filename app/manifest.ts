@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Pedí por WhatsApp",
-    short_name: "Pedí",
+    name: "Fluxo",
+    short_name: "Fluxo",
     description: "Catálogo, pedidos y fiado para tu kiosco",
     start_url: "/panel",
     scope: "/",

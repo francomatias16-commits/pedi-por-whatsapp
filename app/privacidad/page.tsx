@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AvisoBorrador, Contacto, FECHA_LEGAL, Pie } from "@/components/Legal";
 
-export const metadata: Metadata = { title: "Política de privacidad · Pedí por WhatsApp" };
+export const metadata: Metadata = { title: "Política de privacidad · Fluxo" };
 
 export default function Privacidad() {
   return (

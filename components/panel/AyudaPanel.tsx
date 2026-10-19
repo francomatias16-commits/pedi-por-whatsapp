@@ -15,7 +15,7 @@ export default function AyudaPanel({ tab, abierta, onCerrar }: { tab: Tab; abier
       <p>{g.texto}</p>
       <div className="wiz-botones">
         <button type="button" className="sec" onClick={onCerrar}>Cerrar</button>
-        {hayAyuda && <a className="btn" href={linkAyuda(`Hola, necesito ayuda con la pantalla ${g.titulo} de Pedí por WhatsApp`)} target="_blank" rel="noopener noreferrer">Hablar por WhatsApp</a>}
+        {hayAyuda && <a className="btn" href={linkAyuda(`Hola, necesito ayuda con la pantalla ${g.titulo} de Fluxo`)} target="_blank" rel="noopener noreferrer">Hablar por WhatsApp</a>}
       </div>
     </dialog>
   );

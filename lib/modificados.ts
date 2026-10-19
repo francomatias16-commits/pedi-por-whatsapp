@@ -4,7 +4,7 @@ export type Periodo = "hoy" | "7" | "30";
 
 // Movimientos de la operación diaria. Por defecto no se muestran: lo que interesa es lo que cambió a mano
 // (ajustes, conteos, mermas) o por compras. Con el tilde "Incluir ventas, pedidos y devoluciones" se agregan.
-export const TIPOS_OPERATIVOS = ["venta", "anulacion_venta", "devolucion", "pedido", "cancelacion_pedido"] as const;
+const TIPOS_OPERATIVOS = ["venta", "anulacion_venta", "devolucion", "pedido", "cancelacion_pedido"] as const;
 
 export type Mov = { producto_id: string; tipo: string; cantidad: number; created_at: string; nombre: string; por_peso: boolean };
 export type Fila = { producto_id: string; nombre: string; por_peso: boolean; neto: number; movimientos: number; ultimo: string };

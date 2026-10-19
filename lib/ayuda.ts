@@ -3,5 +3,5 @@
 const NUMERO = (process.env.NEXT_PUBLIC_WHATSAPP_AYUDA ?? "").replace(/\D/g, "");
 
 export const hayAyuda = NUMERO.length >= 10;
-export const linkAyuda = (mensaje = "Hola, necesito ayuda con Pedí por WhatsApp") =>
+export const linkAyuda = (mensaje = "Hola, necesito ayuda con Fluxo") =>
   hayAyuda ? `https://wa.me/${NUMERO}?text=${encodeURIComponent(mensaje)}` : "";
