@@ -1,5 +1,6 @@
 "use client";
 import { costoEnvioMostrado, minimoEfectivo, type Zona } from "@/lib/zonas";
+import { etiquetaFranja, type Franja } from "@/lib/franjas";
 import { useConfirmar } from "@/components/ui/Confirmar";
 import { useEffect, useMemo, useState } from "react";
 import { supabase, type Kiosco, type Producto } from "@/lib/supabase";
@@ -21,6 +22,8 @@ const ERRORES: [string, string][] = [
   ["demasiados_pedidos", "Ya enviaste varios pedidos hace un momento. Esperá unos minutos."],
   ["zona_requerida", "Elegí a qué zona va el envío."],
   ["zona_invalida", "Esa zona ya no está disponible. Elegí otra."],
+  ["franja_requerida", "Elegí en qué franja querés recibir el pedido."],
+  ["franja_invalida", "Esa franja ya no está disponible. Elegí otra."],
   ["local_saturado", "El local recibió muchos pedidos juntos. Probá en unos minutos."],
 ];
 const ERRORES_PAGO: Record<string, string> = {
@@ -51,6 +54,14 @@ export default function Tienda({ kiosco, productos }: { kiosco: Kiosco; producto
     supabase.from("zonas_envio").select("id,nombre,descripcion,costo,pedido_minimo,activa").eq("kiosco_id", kiosco.id).eq("activa", true).order("nombre")
       .then(({ data }) => setZonas((data ?? []) as Zona[]));
   }, [zonasActivas, kiosco.id]);
+  const franjasActivas = !!kiosco.franjas_entrega_activo;
+  const [franjas, setFranjas] = useState<Franja[]>([]);
+  const [franjaId, setFranjaId] = useState("");
+  useEffect(() => {
+    if (!franjasActivas) return;
+    supabase.from("franjas_entrega").select("id,nombre,desde,hasta,activa").eq("kiosco_id", kiosco.id).eq("activa", true).order("desde").order("nombre")
+      .then(({ data }) => setFranjas((data ?? []) as Franja[]));
+  }, [franjasActivas, kiosco.id]);
   const [notas, setNotas] = useState("");
   // Cobro online: el local conectó Mercado Pago y lo tiene encendido. Entonces "Mercado Pago" es pagar ahora, desde acá.
   const cobroOnline = !!kiosco.cobro_online_activo && (kiosco.medios_pago ?? []).includes("mercadopago");
@@ -86,6 +97,8 @@ export default function Tienda({ kiosco, productos }: { kiosco: Kiosco; producto
   const bajoMinimo = total < minimo;
   const envio = costoEnvioMostrado(zonasActivas, Number(kiosco.costo_envio ?? 0), modalidad, zona);
   const faltaZona = modalidad === "envio" && zonasActivas && !zona;
+  const franja = franjas.find((x) => x.id === franjaId) ?? null;
+  const faltaFranja = modalidad === "envio" && franjasActivas && !franja;
   const estado = ahora ? estadoTienda(kiosco, ahora) : kiosco.abierto === false ? "pausada" : "abierta";
   const cerrado = estado !== "abierta";
   const proxima = estado === "fuera_de_horario" && ahora ? textoApertura(kiosco.horarios ?? {}, ahora) : null;
@@ -122,6 +135,7 @@ export default function Tienda({ kiosco, productos }: { kiosco: Kiosco; producto
     const { data, error: err } = await supabase.rpc("crear_pedido", {
       p_slug: kiosco.slug, p_nombre: nombre.trim(), p_telefono: tel, p_modalidad: modalidad,
       p_direccion: dir, p_notas: notas, p_items: items.map((i) => ({ producto_id: i.p.id, cantidad: i.cant })), p_zona: modalidad === "envio" && zonasActivas ? zonaId || null : null, p_medio_pago: medio,
+      p_franja: modalidad === "envio" && franjasActivas ? franjaId || null : null,
     });
     setEnviando(false);
     if (err) { setError(mensajeError(err.message ?? "")); return; }
@@ -134,7 +148,7 @@ export default function Tienda({ kiosco, productos }: { kiosco: Kiosco; producto
       return;
     }
     const texto = mensajePedido({
-      numero: data.numero, nombre: nombre.trim(), telefono: tel, modalidad, direccion: dir, notas,
+      numero: data.numero, nombre: nombre.trim(), telefono: tel, modalidad, direccion: dir, notas, franja: data.franja ?? undefined,
       costoEnvio: Number(data.costo_envio ?? 0), medioPago: medio,
       items: items.map((i) => ({ nombre: i.p.nombre, cantidad: i.cant, precio: Number(i.p.precio) })),
       total: Number(data.total),
@@ -167,7 +181,7 @@ export default function Tienda({ kiosco, productos }: { kiosco: Kiosco; producto
   );
 
   if (paso === "datos") {
-    const ok = nombre.trim().length >= 2 && tel.replace(/\D/g, "").length >= 8 && (modalidad === "retiro" || dir.trim().length >= 3) && !faltaZona && !bajoMinimo && !cerrado;
+    const ok = nombre.trim().length >= 2 && tel.replace(/\D/g, "").length >= 8 && (modalidad === "retiro" || dir.trim().length >= 3) && !faltaZona && !faltaFranja && !bajoMinimo && !cerrado;
     return (
       <>
       {ventanaConfirmar}
@@ -207,6 +221,14 @@ export default function Tienda({ kiosco, productos }: { kiosco: Kiosco; producto
         {zona?.descripcion && <p className="mut">{zona.descripcion}</p>}
         {modalidad === "envio" && !zonasActivas && Number(kiosco.costo_envio) > 0 && <p className="mut">El envío cuesta {peso(Number(kiosco.costo_envio))}.</p>}
         {modalidad === "envio" && zonasActivas && zona && Number(zona.costo) > 0 && <p className="mut">El envío a {zona.nombre} cuesta {peso(Number(zona.costo))}.</p>}
+        {modalidad === "envio" && franjasActivas && (
+          <label>¿Cuándo querés recibirlo?
+            <select value={franjaId} onChange={(e) => setFranjaId(e.target.value)}>
+              <option value="">Elegí una franja</option>
+              {franjas.map((x) => <option key={x.id} value={x.id}>{etiquetaFranja(x)}</option>)}
+            </select>
+          </label>
+        )}
         {modalidad === "envio" && <label>Dirección<input value={dir} onChange={(e) => setDir(e.target.value)} autoComplete="street-address" /></label>}
         {(kiosco.medios_pago?.length ?? 0) > 1 && (
           <label>¿Cómo pagás?

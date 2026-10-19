@@ -8,6 +8,7 @@ import Escaner from "./Escaner";
 import { useConfirmar } from "@/components/ui/Confirmar";
 import CargaMasiva from "./CargaMasiva";
 import FotosSugeridas from "./FotosSugeridas";
+import FotosLote from "./FotosLote";
 import { BUCKET, comprimirImagen, rutaDeStorage, rutaFoto } from "@/lib/fotos";
 
 const num = (s: string) => Number(s.replace(",", "."));
@@ -203,6 +204,7 @@ export default function Productos({ kiosco }: { kiosco: Kiosco }) {
       <input placeholder="Otra categoría" aria-label="Otra categoría" value={cat} onChange={(e) => setCat(e.target.value)} />
       <button disabled={!puede} onClick={guardar}>{guardando ? "Guardando…" : "Guardar"}</button>
 
+      <FotosLote kiosco={kiosco} lista={lista} onCambio={cargar} />
       <h2>Catálogo ({lista.length}{sinStock > 0 ? ` · ${sinStock} sin stock` : ""})</h2>
       <div className="buscador-fijo">
         <label className="sr-only" htmlFor="buscar-productos">Buscar producto</label>
