@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { CLUB_TOKEN_RE, CODIGO_CLUB_RE, casilleros, claveTokenLocal, esMedioDigital, faltan, linkInvitacion, mensajeInvitacion, normalizarCodigoClub, textoBloqueo, type MedioClub, type Tarjeta } from "@/lib/club";
+import { CLUB_TOKEN_RE, CODIGO_CLUB_RE, casilleros, claveTokenLocal, esMedioDigital, faltan, linkInvitacion, linkTienda, mensajeInvitacion, normalizarCodigoClub, textoBloqueo, type MedioClub, type Tarjeta } from "@/lib/club";
 import { linkWhatsApp } from "@/lib/whatsapp";
 import { mensajeErrorSql } from "@/lib/errores";
 import InstalarApp from "@/components/panel/InstalarApp";
@@ -84,6 +84,7 @@ export default function ClubTarjeta({ token, inicial }: { token: string; inicial
     <main className="club">
       <p className="mut">{t.local}</p>
       <h1>Hola, {t.cliente}</h1>
+      {t.tienda && <a className="btn-grande" href={linkTienda(t.slug)} style={{ display: "block", textAlign: "center", marginBottom: 12 }}>Ver catálogo y hacer un pedido</a>}
       {c.total > 0 && (
         <ol className="club-casilleros" aria-label={`${t.sellos} de ${t.meta} sellos`}>
           {Array.from({ length: c.total }, (_, i) => <li key={i} className={i < c.llenos ? "lleno" : ""} aria-hidden="true">{i < c.llenos ? "✔" : ""}</li>)}

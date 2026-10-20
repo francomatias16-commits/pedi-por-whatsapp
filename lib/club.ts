@@ -19,6 +19,7 @@ export type Tarjeta = {
   niveles?: { nombre: string; costo_sellos: number; alcanzado: boolean }[]; // premios por etapas
   proximo?: { nombre: string; costo_sellos: number; faltan: number } | null;
   sorteo?: { nombre: string; hasta: string; mis_chances: number } | null; // sorteo vigente con permiso confirmado
+  tienda?: boolean; // el local tiene catálogo para pedir: la tarjeta muestra el acceso a la tienda
 };
 
 /** Link para invitar a un amigo: lleva a la pantalla de registro del local con el código. */
@@ -27,7 +28,7 @@ export const mensajeInvitacion = (local: string, link: string) => `¡Hola! Sumat
 export const REF_CLUB_RE = /^[A-Z0-9]{4,16}$/;
 /** Limpia el código del link (mayúsculas y sin símbolos). Vacío si no sirve. */
 export const normalizarRef = (r: string | null | undefined) => { const t = (r ?? "").toUpperCase().replace(/[^A-Z0-9]/g, ""); return REF_CLUB_RE.test(t) ? t : ""; };
-export type DatosClub = { nombre: string; slug: string; whatsapp: string; premio: string | null; meta: number | null; por_compra?: number; bienvenida?: number };
+export type DatosClub = { nombre: string; slug: string; whatsapp: string; premio: string | null; meta: number | null; por_compra?: number; bienvenida?: number; tienda?: boolean };
 export type MedioClub = "efectivo" | "transferencia" | "mercadopago";
 export const MEDIOS_CLUB: MedioClub[] = ["efectivo", "transferencia", "mercadopago"];
 export const esMedioClub = (m: unknown): m is MedioClub => typeof m === "string" && (MEDIOS_CLUB as string[]).includes(m);
@@ -37,6 +38,10 @@ export const nombreMedio = (m: string | null | undefined) => m === "transferenci
 export type ActividadClub = { evento: string; cliente_id: string; nombre: string; telefono: string; cantidad: number; cuando: string; rechazado: boolean; nuevo: boolean; medio?: MedioClub | null; verificado?: boolean | null };
 export type AjustesClub = { club_activo: boolean; club_max_por_dia: number | null; club_espera_min: number | null; club_hora_desde: string | null; club_hora_hasta: string | null };
 
+/** Link de la tienda (catálogo y pedidos) del local. */
+export const linkTienda = (slug: string, origen = "") => `${origen.replace(/\/$/, "")}/${slug}`;
+/** El QR único del local: lleva al club si está activo (y desde ahí al catálogo); si no, directo a la tienda. */
+export const linkQrUnico = (k: { slug: string; club_activo?: boolean }, origen = "") => (k.club_activo === false ? linkTienda(k.slug, origen) : linkClub(k.slug, origen));
 export const linkClub = (slug: string, origen = "") => `${origen.replace(/\/$/, "")}/${slug}/club`;
 export const linkTarjeta = (token: string, origen = "") => `${origen.replace(/\/$/, "")}/tarjeta/${token}`;
 

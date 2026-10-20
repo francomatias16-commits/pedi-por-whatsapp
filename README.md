@@ -122,3 +122,6 @@ El encargado o el dueño buscan fotos sugeridas para un producto (base de la red
 
 ## Demo en vivo
 - `0059_demo_en_vivo.sql` (**aplicar ANTES de subir el código**, después de la 0058): kiosco de ejemplo de solo lectura en `/demo`, con reinicio diario. Puesta en marcha, reglas y límites: `docs/DEMO.md`. Variables: `DEMO_EMAIL`, `DEMO_PASSWORD`. Tests: `supabase/tests/demo_test.py` y `npm run test:demo`.
+
+## QR único y productos visibles (0060)
+- `0060_qr_unico_tienda_visible.sql` (**aplicar ANTES de subir el código**, después de la 0059): el QR del club también lleva al catálogo (si el local tiene tienda) y cada producto elige si se ve en la tienda (`visible_tienda`, separado de `disponible`). Detalle: `CHANGELOG_qr_unico.md`. Tests: `npm run test:tienda`, `supabase/tests/tienda_visible_test.py`.
