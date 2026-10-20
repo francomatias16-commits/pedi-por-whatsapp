@@ -19,6 +19,10 @@
     {
       "path": "/api/cron/fotos-limpieza",
       "schedule": "40 6 * * 1"
+    },
+    {
+      "path": "/api/cron/demo",
+      "schedule": "0 6 * * *"
     }
   ]
 }

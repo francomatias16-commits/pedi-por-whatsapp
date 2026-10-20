@@ -8,6 +8,10 @@
 export type ParError = [string, string];
 
 export const ERRORES_SQL: ParError[] = [
+  ["demo_solo_lectura", "Esto es la demo: podés mirar todo, pero no se guardan cambios. Creá tu kiosco para probarlo con tus datos."],
+  ["demo_sin_usuario", "La cuenta de la demo no existe."],
+  ["demo_usuario_con_kiosco", "Esa cuenta ya tiene un kiosco propio: usá otra para la demo."],
+  ["demo_sin_kiosco", "No encontramos el kiosco de la demo."],
   ["venta_no_encontrada", "No encontramos esa venta."],
   ["venta_anulada", "Esa venta está anulada: no se puede facturar."],
   ["venta_sin_total", "Esa venta no tiene importe para facturar."],

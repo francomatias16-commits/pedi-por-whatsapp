@@ -30,8 +30,8 @@ export async function GET(req: Request) {
   if (!/^[A-Za-z0-9_-]{8,200}$/.test(code)) return volver("estado_invalido");
 
   const admin = crearAdmin();
-  const { data: k } = await admin.from("kioscos").select("owner_id").eq("id", datos.kiosco).maybeSingle();
-  if (!k || k.owner_id !== datos.usuario) return volver("no_autorizado");
+  const { data: k } = await admin.from("kioscos").select("owner_id,es_demo").eq("id", datos.kiosco).maybeSingle();
+  if (!k || k.es_demo || k.owner_id !== datos.usuario) return volver("no_autorizado");
 
   let token;
   try { token = await canjearCodigoOAuth(code, origen); }

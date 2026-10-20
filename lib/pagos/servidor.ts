@@ -16,8 +16,9 @@ export async function esDueno(req: Request, admin: SupabaseClient, kioscoId: str
   if (!t || !UUID.test(kioscoId)) return false;
   const { data } = await admin.auth.getUser(t);
   if (!data.user) return false;
-  const { data: k } = await admin.from("kioscos").select("owner_id").eq("id", kioscoId).maybeSingle();
-  return k?.owner_id === data.user.id;
+  const { data: k } = await admin.from("kioscos").select("owner_id,es_demo").eq("id", kioscoId).maybeSingle();
+  // La demo nunca dispara cobros ni facturas reales.
+  return !k?.es_demo && k?.owner_id === data.user.id;
 }
 
 // ¿Quien llama es miembro activo de ese kiosco (o su dueño) con uno de esos roles? Devuelve su id y su rol, o null.
@@ -27,8 +28,9 @@ export async function rolDe(req: Request, admin: SupabaseClient, kioscoId: strin
   if (!t || !UUID.test(kioscoId)) return null;
   const { data } = await admin.auth.getUser(t);
   if (!data.user) return null;
-  const { data: k } = await admin.from("kioscos").select("owner_id").eq("id", kioscoId).maybeSingle();
-  if (!k) return null;
+  const { data: k } = await admin.from("kioscos").select("owner_id,es_demo").eq("id", kioscoId).maybeSingle();
+  // La demo nunca dispara cobros, facturas ni llamadas reales a terceros.
+  if (!k || k.es_demo) return null;
   let rol: RolKiosco | null = null;
   if (k.owner_id === data.user.id) rol = "dueno";
   else {
