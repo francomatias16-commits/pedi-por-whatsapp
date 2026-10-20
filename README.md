@@ -119,3 +119,6 @@ Límites: el aviso llega si el navegador o la app instalada siguen con permiso; 
 ## Etapa 3D: fotos automáticas de productos (2026-10-18)
 
 El encargado o el dueño buscan fotos sugeridas para un producto (base de la red, Open Food Facts y, si hay clave, un buscador de imágenes), eligen una y la pueden deshacer. Nunca se cambia una foto sola; las de internet exigen confirmar derechos. Interruptor del dueño en Mi negocio, apagado por defecto. Detalle y checklist en `docs/ETAPA3D_FOTOS.md`; migración `0034_fotos_auto.sql`.
+
+## Demo en vivo
+- `0059_demo_en_vivo.sql` (**aplicar ANTES de subir el código**, después de la 0058): kiosco de ejemplo de solo lectura en `/demo`, con reinicio diario. Puesta en marcha, reglas y límites: `docs/DEMO.md`. Variables: `DEMO_EMAIL`, `DEMO_PASSWORD`. Tests: `supabase/tests/demo_test.py` y `npm run test:demo`.

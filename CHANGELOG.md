@@ -1,5 +1,26 @@
 # Changelog
 
+## demo-en-vivo — 2026-10-20
+
+Demo en vivo como la del proyecto de distribuidoras (`/demo`), readecuada a kioscos. Detalle y puesta en marcha: `docs/DEMO.md`.
+
+### Agregado
+- `supabase/migrations/0059_demo_en_vivo.sql` (**aplicar en el SQL Editor ANTES de subir el código**, después de la 0058): `kioscos.es_demo`, `es_usuario_demo()`, trigger `demo_solo_lectura` en todas las tablas (rechaza cualquier cambio de la cuenta de la demo, directo o por funciones), políticas restrictivas de Storage, `demo_sembrar()` y `demo_reiniciar()` (solo `service_role`), slug `demo` reservado.
+- `/demo` + `POST /api/demo`: entra con la cuenta de la demo desde el servidor (la clave no viaja al navegador). Si ya hay una sesión abierta, pregunta antes de cerrarla.
+- `GET /api/cron/demo` + entrada en `vercel.json` (03:00 AR): reinicia los datos y restablece la cuenta.
+- `scripts/crear-demo.mjs`: crea la cuenta y el kiosco demo (una vez por ambiente).
+- Cartel "Estás en la demo" en el panel (`components/panel/AvisoDemo.tsx`) con salida a crear el kiosco propio.
+- Portada: botón "Ver demo en vivo" arriba y abajo.
+- Datos ficticios con puntos y pagos con Mercado Pago en mostrador y tienda (4 pedidos de la tienda).
+- `supabase/tests/demo_test.py` (53 chequeos), `tests/demo.test.mjs` (15, dentro de `npm test`), mensajes en `lib/errores.ts`, variables `DEMO_EMAIL` y `DEMO_PASSWORD`.
+
+### Cambiado
+- `lib/pagos/servidor.ts` (`esDueno`, `rolDe`) y el callback OAuth de Mercado Pago: nunca autorizan nada sobre el kiosco demo (sin cobros, facturas, fotos ni conexión de cuentas reales).
+
+### Sin cambios / no incluido
+- Prueba real en navegador, con Supabase Auth y con el cron de Vercel: requiere el proyecto desplegado.
+- `etapa2` a `etapa9` y `rls_test.py` (piden `pgserver`) no se pudieron correr acá; el resto de `supabase/tests` y `npm test` pasan.
+
 ## etapa3d-fotos-automaticas — 2026-10-18
 
 Tercera parte de la Etapa 3 (ver `docs/ETAPA3D_FOTOS.md`): fotos automáticas de productos, sugeridas y nunca aplicadas solas.

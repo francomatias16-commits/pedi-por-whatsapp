@@ -27,6 +27,7 @@ import BarraInferior from "./BarraInferior";
 import SubNav from "./SubNav";
 import AyudaPanel from "./AyudaPanel";
 import Bienvenida from "./Bienvenida";
+import AvisoDemo from "./AvisoDemo";
 
 export default function Dueno({ kiosco, rol = "dueno", recargar }: { kiosco: Kiosco; rol?: Rol; recargar: () => void }) {
   const router = useRouter();
@@ -48,7 +49,7 @@ export default function Dueno({ kiosco, rol = "dueno", recargar }: { kiosco: Kio
   useEffect(() => {
     let visto = false;
     try { visto = localStorage.getItem(`pdw-bienvenida-${kiosco.id}`) === "1"; } catch { visto = true; }
-    if (!visto) setBienvenida(true);
+    if (!visto && !kiosco.es_demo) setBienvenida(true);
   }, [kiosco.id]);
   const cerrarBienvenida = () => {
     setBienvenida(false);
@@ -98,6 +99,7 @@ export default function Dueno({ kiosco, rol = "dueno", recargar }: { kiosco: Kio
       <BarraSuperior kiosco={kiosco} rol={rol} abierta={abierta} bloqueado={estado === "fuera_de_horario"} detalle={detalle} onInterruptor={interruptor} onSalir={() => supabase.auth.signOut()} onAyuda={() => setAyudaAbierta(true)} />
       <NavLateral actual={destino} pendientes={pendientes} porComprar={porComprar} rol={rol} />
       <section className="panel-main">
+        {kiosco.es_demo && <AvisoDemo />}
         <SubNav destino={destino} tab={tab} rol={rol} />
         {tab === "pedidos" && <Pedidos kiosco={kiosco} rol={rol} />}
         {tab === "productos" && <Productos kiosco={kiosco} />}
