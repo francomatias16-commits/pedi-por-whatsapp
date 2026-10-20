@@ -278,6 +278,14 @@ dialog.confirmar h3 { margin: 0 0 .5rem; font-size: 1.7rem; }
 .portada-sec .paso p { margin: .25rem 0 0; }
 .paso-n { flex: none; display: grid; place-items: center; width: 2.9rem; height: 2.9rem; border-radius: 2px; background: var(--signal); border: 2px solid var(--ink); color: var(--ink); font: 700 1.9rem/1 var(--f-display); }
 .incluye li { display: flex; flex-direction: column; gap: .15rem; padding: .9rem 1rem; background: var(--surface); border: 1.5px solid var(--ink); border-left: 8px solid var(--signal); border-radius: var(--r); }
+.pilares { display: grid; gap: 1rem; }
+@media (min-width: 760px) { .pilares { grid-template-columns: repeat(2, 1fr); } .incluye-3 { grid-template-columns: repeat(3, 1fr) !important; } }
+.pilar { margin: 0; padding: 1.3rem 1.3rem 1.2rem; border: 2px solid var(--ink); border-top: 10px solid var(--signal); border-radius: var(--r); background: var(--surface); color: var(--ink); box-shadow: 5px 5px 0 var(--ink); }
+.pilar h3 { margin: 0 0 .6rem; font: 700 1.7rem/1.1 var(--f-display); }
+.pilar p { margin: 0 0 .8rem; font-size: 1.05rem; }
+.pilar ul { margin: 0; padding: 0 0 0 1.1rem; display: grid; gap: .3rem; font-weight: 600; }
+.muestra-pts { display: flex; justify-content: space-between; align-items: baseline; margin-top: .7rem; padding: .35rem .5rem; border: 1.5px dashed var(--ink); font: 600 .9rem var(--f-ui); }
+.muestra-pts b { font: 700 1.2rem var(--f-mono); }
 .portada-cierre { margin: 2.6rem 0 1rem; display: flex; flex-direction: column; align-items: flex-start; gap: 1rem; }
 .ayuda-wa { display: inline-block; font-weight: 700; padding: .5rem 0; }
 
