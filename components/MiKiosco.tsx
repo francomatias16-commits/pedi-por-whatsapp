@@ -25,6 +25,7 @@ export default function MiKiosco({ kiosco, onGuardado, onVerBienvenida }: { kios
   const [hs, setHs] = useState<Horarios>(kiosco.horarios ?? {});
   const [minimo, setMinimo] = useState(String(kiosco.pedido_minimo ?? 0));
   const [costoEnvio, setCostoEnvio] = useState(String(kiosco.costo_envio ?? 0));
+  const [tienda, setTienda] = useState(kiosco.tienda_activa ?? true);
   const [pagos, setPagos] = useState<string[]>(kiosco.medios_pago ?? ["efectivo"]);
   const [msg, setMsg] = useState("");
   const [ok, setOk] = useState(false);
@@ -41,7 +42,7 @@ export default function MiKiosco({ kiosco, onGuardado, onVerBienvenida }: { kios
     setGuardando(true); setMsg("");
     const { error } = await supabase.from("kioscos").update({
       nombre: nombre.trim(), whatsapp: normalizarTelefonoAR(wa), direccion: dir.trim() || null, acepta_envio: envio,
-      horario: horario.trim() || null, horario_auto: auto, horarios: hs, pedido_minimo: n(minimo), costo_envio: n(costoEnvio), medios_pago: pagos,
+      horario: horario.trim() || null, horario_auto: auto, horarios: hs, pedido_minimo: n(minimo), costo_envio: n(costoEnvio), medios_pago: pagos, tienda_activa: tienda,
     }).eq("id", kiosco.id);
     setGuardando(false);
     if (error) { setOk(false); setMsg("No se pudo guardar. Revisá los datos."); return; }
@@ -108,9 +109,13 @@ export default function MiKiosco({ kiosco, onGuardado, onVerBienvenida }: { kios
         ))}
       </Plegable>
 
-      <Plegable titulo="Compartir mi tienda">
-        <QrKiosco slug={kiosco.slug} nombre={kiosco.nombre} />
-        <p className="mut">Link de la tienda: <b>/{kiosco.slug}</b> (no se cambia, para que el QR impreso siga funcionando).</p>
+      <Plegable titulo="Compartir mi QR">
+        <label className="mut" style={{ display: "block", margin: "8px 0" }}>
+          <input type="checkbox" checked={tienda} onChange={(e) => setTienda(e.target.checked)} style={{ width: "auto", marginRight: 8 }} />Tengo tienda online (catálogo y pedidos). Destildalo si solo querés usar el club de sellos.
+        </label>
+        <p className="mut" style={{ marginTop: 0 }}>Se aplica al tocar “Guardar cambios”. Qué productos se ven en la tienda lo elegís en Productos.</p>
+        <QrKiosco slug={kiosco.slug} nombre={kiosco.nombre} clubActivo={kiosco.club_activo ?? true} tiendaActiva={kiosco.tienda_activa ?? true} />
+        <p className="mut">Link: <b>/{kiosco.slug}</b> (no se cambia, para que el QR impreso siga funcionando). Un solo QR sirve para todo: el cliente suma sellos y, si tenés tienda, también ve el catálogo.</p>
       </Plegable>
 
       <Plegable titulo="Avisos al celular">

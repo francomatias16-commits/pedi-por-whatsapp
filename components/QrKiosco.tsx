@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
+import { linkQrUnico } from "@/lib/club";
 
-// Código QR de la tienda: vive en "Mi local" (antes aparecía arriba de todas las pantallas).
-export default function QrKiosco({ slug, nombre }: { slug: string; nombre: string }) {
+// QR único del local: lleva al club de sellos y, desde ahí, al catálogo (si el local tiene tienda). Si el club está apagado, lleva directo a la tienda.
+export default function QrKiosco({ slug, nombre, clubActivo = true, tiendaActiva = true }: { slug: string; nombre: string; clubActivo?: boolean; tiendaActiva?: boolean }) {
   const [png, setPng] = useState("");
   const [copiado, setCopiado] = useState(false);
-  const url = typeof window !== "undefined" ? `${location.origin}/${slug}` : "";
+  const url = typeof window !== "undefined" ? linkQrUnico({ slug, club_activo: clubActivo }, location.origin) : "";
 
   useEffect(() => {
     if (!url) return;
@@ -22,8 +23,8 @@ export default function QrKiosco({ slug, nombre }: { slug: string; nombre: strin
     <div className="card qr-card">
       <img src={png} alt={`QR de ${nombre}`} width={96} height={96} />
       <div className="qr-datos">
-        <b>Tu tienda para compartir</b>
-        <p className="mut" style={{ margin: ".15rem 0 .5rem" }}>Pegá el QR en la vidriera, el mostrador y las bolsas.</p>
+        <b>Tu QR para compartir</b>
+        <p className="mut" style={{ margin: ".15rem 0 .5rem" }}>{clubActivo && tiendaActiva ? "Un solo QR: tarjeta de sellos y catálogo." : clubActivo ? "Lleva a la tarjeta de sellos (la tienda online está apagada)." : "Lleva directo a la tienda (el club está en pausa)."} Pegalo en la vidriera, el mostrador y las bolsas.</p>
         <p className="mut qr-url">{url}</p>
         <div className="qr-acciones">
           <a className="btn" download={`qr-${slug}.png`} href={png}>Descargar QR</a>

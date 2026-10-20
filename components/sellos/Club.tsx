@@ -22,7 +22,8 @@ function partir(ctx: CanvasRenderingContext2D, texto: string, ancho: number): st
 
 /** Cartel imprimible con el QR: se dibuja en un canvas y se baja como imagen. */
 async function descargarCartel(kiosco: Kiosco, url: string, premio: Premio | null) {
-  const W = 1080, H = 1528, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const tienda = kiosco.tienda_activa !== false;
+  const W = 1080, H = tienda ? 1640 : 1528, c = document.createElement("canvas"); c.width = W; c.height = H;
   const g = c.getContext("2d")!;
   const css = getComputedStyle(document.documentElement);
   const tinta = css.getPropertyValue("--ink").trim() || "#14181d";
@@ -41,7 +42,9 @@ async function descargarCartel(kiosco: Kiosco, url: string, premio: Premio | nul
   g.drawImage(qr, (W - 640) / 2, y + 60, 640, 640);
   g.font = "700 50px system-ui, sans-serif"; y += 790;
   for (const t of ["1. Escaneá el QR y creá tu tarjeta (una sola vez)", "2. Después de pagar, abrí tu tarjeta", "3. Elegí cómo pagaste y sumá tu sello"]) { for (const l of partir(g, t, W - 220)) { g.fillText(l, W / 2, y); y += 62; } y += 14; }
-  g.font = "600 40px system-ui, sans-serif"; g.fillText(kiosco.nombre, W / 2, H - 90);
+  g.font = "600 40px system-ui, sans-serif";
+  if (tienda) for (const l of partir(g, "También podés ver el catálogo y hacer tu pedido desde ahí", W - 220)) { g.fillText(l, W / 2, y + 10); y += 50; }
+  g.fillText(kiosco.nombre, W / 2, H - 90);
   c.toBlob((b) => {
     if (!b) return;
     const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `cartel-club-${kiosco.slug}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
@@ -175,7 +178,7 @@ export default function Club({ kiosco, premios, campanas, onCambio }: { kiosco: 
         {png && <img src={png} alt={`QR del club de ${kiosco.nombre}`} width={96} height={96} />}
         <div className="qr-datos">
           <b>QR del mostrador</b>
-          <p className="mut" style={{ margin: ".15rem 0 .5rem" }}>El cliente lo escanea una sola vez y se crea su tarjeta.</p>
+          <p className="mut" style={{ margin: ".15rem 0 .5rem" }}>El cliente lo escanea una sola vez y se crea su tarjeta.{kiosco.tienda_activa !== false ? " Desde su tarjeta también puede ver tu catálogo: es el mismo QR de tu tienda." : ""}</p>
           <p className="mut qr-url">{url}</p>
           <div className="qr-acciones">
             <button type="button" onClick={() => descargarCartel(kiosco, url, principal)}>Descargar cartel</button>

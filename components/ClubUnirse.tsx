@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CLUB_TOKEN_RE, claveTokenLocal, textoPromesa, validarRegistro, type DatosClub } from "@/lib/club";
+import { CLUB_TOKEN_RE, claveTokenLocal, linkTienda, textoPromesa, validarRegistro, type DatosClub } from "@/lib/club";
 import { mensajeErrorSql } from "@/lib/errores";
 import { linkWhatsApp, normalizarTelefonoAR } from "@/lib/whatsapp";
 
@@ -67,6 +67,7 @@ export default function ClubUnirse({ slug, datos, refAmigo = "" }: { slug: strin
         <button className="btn-grande" disabled={ocupado}>{ocupado ? "Un segundo…" : "Crear mi tarjeta"}</button>
         {msg && <p role="alert" className="alerta">{msg}</p>}
       </form>
+      {datos.tienda && <p><Link className="btn sec" href={linkTienda(slug)}>Solo quiero ver el catálogo</Link></p>}
       <p className="mut">Usamos tu nombre y teléfono solo para tu tarjeta en {datos.nombre}. Más en la <Link href="/privacidad">política de privacidad</Link>.</p>
     </main>
   );

@@ -184,6 +184,7 @@ export const ERRORES_SQL: ParError[] = [
   ["telefono_invalido", "Revisá el número de WhatsApp."],
   ["kiosco_no_encontrado", "No encontramos este local."],
   ["local_cerrado", "El local está cerrado por ahora. Probá más tarde."],
+  ["tienda_no_disponible", "Este local no está recibiendo pedidos online por ahora. Escribile por WhatsApp."],
   ["fuera_de_horario", "El local está fuera de su horario de atención. Probá cuando abra."],
   ["minimo_no_alcanzado", "No llegás al monto mínimo del pedido."],
   ["demasiados_pedidos", "Ya enviaste varios pedidos hace un momento. Esperá unos minutos."],

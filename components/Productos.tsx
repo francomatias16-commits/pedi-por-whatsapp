@@ -38,6 +38,7 @@ export default function Productos({ kiosco }: { kiosco: Kiosco }) {
   const [q, setQ] = useState("");
   const [filtroCat, setFiltroCat] = useState("Todas");
   const [soloSinStock, setSoloSinStock] = useState(false);
+  const [soloOcultos, setSoloOcultos] = useState(false);
   const [limite, setLimite] = useState(PAGINA);
   const [editId, setEditId] = useState<string | null>(null);
   const [ed, setEd] = useState({ nombre: "", cat: "", precio: "", controla: false, stock: "", peso: false, plu: "", sinStock: false, minimo: "", objetivo: "", entrega: "3", prov: "" });
@@ -60,14 +61,17 @@ export default function Productos({ kiosco }: { kiosco: Kiosco }) {
   const categorias = useMemo(() => Array.from(new Set([...CATS_BASE, ...lista.map((p) => p.categoria)])), [lista]);
   const catsUsadas = useMemo(() => Array.from(new Set(lista.map((p) => p.categoria))), [lista]);
   const sinStock = useMemo(() => lista.filter((p) => !p.disponible).length, [lista]);
+  // "Visible en la tienda" es una decisión del dueño, separada de "Hay / Sin stock": ocultar un producto no lo saca de la Caja.
+  const ocultos = useMemo(() => lista.filter((p) => p.visible_tienda === false).length, [lista]);
   const visibles = useMemo(() => {
     const nq = norm(q.trim());
     return lista.filter((p) =>
       (filtroCat === "Todas" || p.categoria === filtroCat) &&
       (!soloSinStock || !p.disponible) &&
+      (!soloOcultos || p.visible_tienda === false) &&
       (!nq || norm(p.nombre).includes(nq) || (p.barcode ?? "").includes(nq)));
-  }, [lista, q, filtroCat, soloSinStock]);
-  useEffect(() => { setLimite(PAGINA); }, [q, filtroCat, soloSinStock]);
+  }, [lista, q, filtroCat, soloSinStock, soloOcultos]);
+  useEffect(() => { setLimite(PAGINA); }, [q, filtroCat, soloSinStock, soloOcultos]);
 
   // La categoría se conserva entre productos: cargar 20 gaseosas seguidas no pide elegirla 20 veces.
   const limpiar = () => { setBarcode(""); setNombre(""); setPrecio(""); setFuente("kiosco"); };
@@ -125,6 +129,18 @@ export default function Productos({ kiosco }: { kiosco: Kiosco }) {
   async function toggle(p: Producto) {
     const { error } = await supabase.from("productos").update({ disponible: !p.disponible }).eq("id", p.id);
     if (error) setAviso("No se pudo cambiar el stock."); else cargar();
+  }
+  async function toggleVisible(p: Producto) {
+    const { error } = await supabase.from("productos").update({ visible_tienda: p.visible_tienda === false }).eq("id", p.id);
+    if (error) setAviso("No se pudo cambiar si se muestra en la tienda."); else cargar();
+  }
+  // Muestra u oculta de la tienda todos los productos de la categoría elegida en el filtro.
+  async function visibilidadCategoria(visible: boolean) {
+    if (filtroCat === "Todas") return;
+    const n = lista.filter((p) => p.categoria === filtroCat && (p.visible_tienda !== false) !== visible).length;
+    if (n === 0) { setAviso(visible ? "Esa categoría ya se muestra completa en la tienda." : "Esa categoría ya está oculta de la tienda."); return; }
+    const { error } = await supabase.from("productos").update({ visible_tienda: visible }).eq("kiosco_id", kiosco.id).eq("categoria", filtroCat);
+    if (error) setAviso("No se pudo cambiar la categoría."); else { setAviso(`${visible ? "Se muestran" : "Se ocultan"} ${n} producto${n === 1 ? "" : "s"} de ${filtroCat} en la tienda.`); cargar(); }
   }
   // El precio se cambia en el formulario de edición (antes era un prompt del navegador).
   function cambiarPrecio(p: Producto) { abrirEdicion(p); }
@@ -207,7 +223,7 @@ export default function Productos({ kiosco }: { kiosco: Kiosco }) {
       <button disabled={!puede} onClick={guardar}>{guardando ? "Guardando…" : "Guardar"}</button>
 
       <FotosLote kiosco={kiosco} lista={lista} onCambio={cargar} />
-      <h2>Catálogo ({lista.length}{sinStock > 0 ? ` · ${sinStock} sin stock` : ""})</h2>
+      <h2>Catálogo ({lista.length}{sinStock > 0 ? ` · ${sinStock} sin stock` : ""}{ocultos > 0 ? ` · ${ocultos} oculto${ocultos === 1 ? "" : "s"} de la tienda` : ""})</h2>
       <div className="buscador-fijo">
         <label className="sr-only" htmlFor="buscar-productos">Buscar producto</label>
         <input id="buscar-productos" type="search" placeholder="Buscar por nombre o código" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -220,9 +236,20 @@ export default function Productos({ kiosco }: { kiosco: Kiosco }) {
           <input type="checkbox" checked={soloSinStock} onChange={(e) => setSoloSinStock(e.target.checked)} style={{ width: "auto", marginRight: 8 }} />Mostrar solo sin stock
         </label>
       )}
+      {ocultos > 0 && (
+        <label className="mut" style={{ display: "block", margin: "6px 0" }}>
+          <input type="checkbox" checked={soloOcultos} onChange={(e) => setSoloOcultos(e.target.checked)} style={{ width: "auto", marginRight: 8 }} />Mostrar solo los ocultos de la tienda
+        </label>
+      )}
+      {filtroCat !== "Todas" && (
+        <div className="row" style={{ gap: 8, flexWrap: "wrap", margin: "6px 0" }}>
+          <button type="button" className="sec" onClick={() => visibilidadCategoria(false)}>Ocultar “{filtroCat}” de la tienda</button>
+          <button type="button" className="sec" onClick={() => visibilidadCategoria(true)}>Mostrar “{filtroCat}” en la tienda</button>
+        </div>
+      )}
       {lista.length > 0 && visibles.length === 0 && <p className="mut">Nada coincide con ese filtro.</p>}
       {visibles.slice(0, limite).map((p) => (
-        <div className="card" key={p.id} style={p.disponible ? undefined : { opacity: 0.7 }}>
+        <div className="card" key={p.id} style={p.disponible && p.visible_tienda !== false ? undefined : { opacity: 0.7 }}>
           <div className="row">
             <div onClick={() => abrirEdicion(p)} style={{ cursor: "pointer", minWidth: 0, display: "flex", alignItems: "center", gap: 10 }}>
               {p.imagen_url && <img src={p.imagen_url} alt="" width={44} height={44} loading="lazy" style={{ objectFit: "cover", borderRadius: 8, flex: "none", background: "var(--bd)" }} />}
@@ -231,6 +258,7 @@ export default function Productos({ kiosco }: { kiosco: Kiosco }) {
             <div className="qty">
               <button className="sec" onClick={() => cambiarPrecio(p)}>{peso(Number(p.precio))}</button>
               <button className={p.disponible ? "" : "sec"} onClick={() => toggle(p)}>{p.disponible ? "Hay" : "Sin stock"}</button>
+              <button className={p.visible_tienda === false ? "sec" : ""} onClick={() => toggleVisible(p)} aria-pressed={p.visible_tienda !== false} title="Si está en Oculto, no aparece en la tienda pero se sigue vendiendo en la Caja">{p.visible_tienda === false ? "Oculto" : "En tienda"}</button>
             </div>
           </div>
           {editId === p.id && (
