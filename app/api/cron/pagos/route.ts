@@ -1,7 +1,8 @@
 // Reconcilia pagos pendientes (por si un aviso no llegó) y vence los que esperaron demasiado, liberando su stock.
 // Vercel Cron manda "Authorization: Bearer <CRON_SECRET>". Es idempotente.
 import { NextResponse } from "next/server";
-import { crearAdmin, reconciliarCobroQR, reconciliarPedido } from "@/lib/pagos/servidor";
+import { DIAS_CRON } from "@/lib/pagos/oauth";
+import { crearAdmin, reconciliarCobroQR, reconciliarPedido, renovarToken } from "@/lib/pagos/servidor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,5 +31,14 @@ export async function GET(req: Request) {
     resultadosQR[r] = (resultadosQR[r] ?? 0) + 1;
   }
   const { data: qrVencidos } = await admin.rpc("qr_vencer_pendientes");
-  return NextResponse.json({ revisados: pend?.length ?? 0, resultados, vencidos: (venc?.vencidos ?? []).length, qr: { revisados: qrs?.length ?? 0, resultados: resultadosQR, vencidos: qrVencidos ?? 0 } });
+
+  // Conexiones con OAuth: se renuevan las que vencen en el próximo mes, así el refresh token no se pierde por falta de uso.
+  const limite = new Date(Date.now() + DIAS_CRON * 86_400_000).toISOString();
+  const { data: porVencer } = await admin.from("integraciones_pago").select("kiosco_id").eq("forma_conexion", "oauth").eq("activa", true).lt("token_expira_at", limite).limit(50);
+  const tokens: Record<string, number> = {};
+  for (const i of porVencer ?? []) {
+    const r = await renovarToken(admin, i.kiosco_id, DIAS_CRON).then((t) => (t ? "renovado" : "caido")).catch(() => "error");
+    tokens[r] = (tokens[r] ?? 0) + 1;
+  }
+  return NextResponse.json({ tokens, revisados: pend?.length ?? 0, resultados, vencidos: (venc?.vencidos ?? []).length, qr: { revisados: qrs?.length ?? 0, resultados: resultadosQR, vencidos: qrVencidos ?? 0 } });
 }

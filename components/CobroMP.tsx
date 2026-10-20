@@ -6,7 +6,7 @@ import Aviso from "@/components/ui/Aviso";
 import CobroQR from "@/components/CobroQR";
 import { useConfirmar } from "@/components/ui/Confirmar";
 
-type Estado = { conectada: boolean; activa?: boolean; cobro_online_activo: boolean; mp_user_id?: string; token_ultimos4?: string | null; sin_secreto?: boolean; pendientes?: number };
+type Estado = { forma_conexion?: "token" | "oauth"; conectada: boolean; activa?: boolean; cobro_online_activo: boolean; mp_user_id?: string; token_ultimos4?: string | null; sin_secreto?: boolean; pendientes?: number };
 const ERRORES: Record<string, string> = {
   no_autorizado: "Tu sesión venció. Volvé a entrar al panel.",
   token_invalido: "El Access Token no tiene el formato correcto. Copialo completo, empieza con APP_USR- o TEST-.",
@@ -16,6 +16,20 @@ const ERRORES: Record<string, string> = {
   cuenta_otro_pais: "Esa cuenta de Mercado Pago no es de Argentina. Los cobros son en pesos argentinos.",
   servidor_sin_clave: "Falta una configuración del servidor para guardar la credencial. Avisanos.",
   db: "No se pudo guardar. Probá de nuevo.",
+  oauth_sin_configurar: "La conexión con un clic todavía no está lista en el servidor. Avisanos, o conectala a mano más abajo.",
+};
+// Resultado de volver de Mercado Pago (?mp=…).
+const VUELTAS: Record<string, { tipo: "ok" | "error" | "alerta"; texto: string }> = {
+  ok: { tipo: "ok", texto: "Listo. Mercado Pago quedó conectado y tu tienda ya cobra online." },
+  cancelado: { tipo: "alerta", texto: "No aceptaste el permiso en Mercado Pago, así que no se conectó nada. Podés intentarlo de nuevo." },
+  sin_configurar: { tipo: "error", texto: ERRORES.oauth_sin_configurar },
+  estado_invalido: { tipo: "error", texto: "El enlace de conexión venció o no es válido. Tocá de nuevo “Conectar con Mercado Pago”." },
+  cuenta_otro_pais: { tipo: "error", texto: ERRORES.cuenta_otro_pais },
+  mp_rechazo: { tipo: "error", texto: "Mercado Pago no aceptó la conexión. Probá de nuevo; si sigue igual, conectala a mano." },
+  mp_no_responde: { tipo: "error", texto: ERRORES.mp_no_responde },
+  no_autorizado: { tipo: "error", texto: "Solo la cuenta dueña del local puede conectar Mercado Pago." },
+  db: { tipo: "error", texto: ERRORES.db },
+  servidor_sin_clave: { tipo: "error", texto: ERRORES.servidor_sin_clave },
 };
 
 // Cobrar con Mercado Pago: el cliente paga al pedir y la plata va directo a la cuenta de Mercado Pago del local.
@@ -36,6 +50,24 @@ export default function CobroMP({ kiosco, onCambio }: { kiosco: Kiosco; onCambio
     setEstado(data as Estado);
   }, [kiosco.id]);
   useEffect(() => { cargar(); }, [cargar]);
+
+  // Al volver de Mercado Pago llega ?mp=<resultado>: se muestra y se limpia de la dirección.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const v = p.get("mp");
+    if (!v) return;
+    p.delete("mp");
+    window.history.replaceState(null, "", window.location.pathname + (p.toString() ? `?${p}` : ""));
+    if (VUELTAS[v]) { setMsg(VUELTAS[v]); if (v === "ok") onCambio(); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function conectarConMP() {
+    setTrabajando(true); setMsg(null);
+    const { ok, j } = await llamar("/api/pagos/mp/oauth/iniciar", {});
+    if (!ok || typeof j.url !== "string") { setTrabajando(false); setMsg({ tipo: "error", texto: ERRORES[j.error as string] ?? "No se pudo iniciar la conexión. Probá de nuevo." }); return; }
+    window.location.assign(j.url); // sigue en Mercado Pago; vuelve a Mi negocio con el resultado
+  }
 
   async function llamar(ruta: string, cuerpo: Record<string, unknown>) {
     const { data: { session } } = await supabase.auth.getSession();
@@ -99,8 +131,8 @@ export default function CobroMP({ kiosco, onCambio }: { kiosco: Kiosco; onCambio
 
       {estado.conectada && (
         <div className="card" role="group" aria-label="Estado de la conexión">
-          <p style={{ marginTop: 0 }}><b>{estado.activa ? "Conectado" : "Conexión caída"}</b> · cuenta N° {estado.mp_user_id}{estado.token_ultimos4 ? ` · Access Token ••••${estado.token_ultimos4}` : ""}</p>
-          {!estado.activa && <Aviso tipo="error">Mercado Pago rechazó tu credencial. Cargala de nuevo para volver a cobrar online.</Aviso>}
+          <p style={{ marginTop: 0 }}><b>{estado.activa ? "Conectado" : "Conexión caída"}</b> · cuenta N° {estado.mp_user_id}{estado.forma_conexion === "oauth" ? " · conectada con Mercado Pago" : estado.token_ultimos4 ? ` · Access Token ••••${estado.token_ultimos4}` : ""}</p>
+          {!estado.activa && <Aviso tipo="error">{estado.forma_conexion === "oauth" ? "Mercado Pago ya no nos deja cobrar con tu cuenta (quitaste el permiso o venció). Conectala de nuevo para volver a cobrar online." : "Mercado Pago rechazó tu credencial. Cargala de nuevo para volver a cobrar online."}</Aviso>}
           {estado.sin_secreto && <Aviso tipo="alerta">Falta la clave secreta de las notificaciones. Sin ella no se pueden confirmar los pagos.</Aviso>}
           {(estado.pendientes ?? 0) > 0 && <p className="mut">Pedidos esperando pago: {estado.pendientes}.</p>}
           {estado.activa && (
@@ -111,15 +143,24 @@ export default function CobroMP({ kiosco, onCambio }: { kiosco: Kiosco; onCambio
           )}
           <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap", marginTop: 8 }}>
             <button type="button" className="sec" onClick={probar} disabled={trabajando}>Probar la conexión</button>
-            <button type="button" className="sec" onClick={() => setEditando(!editando)} disabled={trabajando}>{editando ? "No cambiar" : "Cambiar credenciales"}</button>
+            {estado.forma_conexion === "oauth" ? <button type="button" className="sec" onClick={conectarConMP} disabled={trabajando}>Reconectar con Mercado Pago</button>
+              : <button type="button" className="sec" onClick={() => setEditando(!editando)} disabled={trabajando}>{editando ? "No cambiar" : "Cambiar credenciales"}</button>}
             <button type="button" className="peligro" onClick={desconectar} disabled={trabajando}>Desconectar</button>
           </div>
         </div>
       )}
 
+      {!estado.conectada && (
+        <div className="card" role="group" aria-label="Conectar con un clic">
+          <p style={{ marginTop: 0 }}>Entrás a Mercado Pago, aceptás y volvés acá con el cobro online encendido. No tenés que copiar nada.</p>
+          <button type="button" className="principal" onClick={conectarConMP} disabled={trabajando}>{trabajando ? "Abriendo Mercado Pago…" : "Conectar con Mercado Pago"}</button>
+        </div>
+      )}
+
       {formulario && (
-        <>
-          <h3>{estado.conectada ? "Cargar credenciales nuevas" : "Conectar en 4 pasos"}</h3>
+        <details open={editando}>
+          <summary>{estado.conectada ? "Cargar credenciales a mano" : "Conectar a mano"}</summary>
+          <h3>Conectar en 4 pasos</h3>
           <ol style={{ paddingLeft: 20 }}>
             <li>Entrá a <b>mercadopago.com.ar/developers</b> con tu cuenta y creá una aplicación de pagos online (Checkout Pro).</li>
             <li>En las credenciales de <b>producción</b>, copiá el <b>Access Token</b>.</li>
@@ -136,7 +177,7 @@ export default function CobroMP({ kiosco, onCambio }: { kiosco: Kiosco; onCambio
           </label>
           <button type="button" className="principal" onClick={conectar} disabled={trabajando || token.trim().length < 20 || secreto.trim().length < 8}>{trabajando ? "Conectando…" : "Conectar Mercado Pago"}</button>
           <p className="mut">Guardamos tus datos cifrados y nunca los volvemos a mostrar completos.</p>
-        </>
+        </details>
       )}
 
       {msg && <Aviso tipo={msg.tipo}>{msg.texto}</Aviso>}

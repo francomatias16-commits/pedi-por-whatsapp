@@ -10,6 +10,7 @@ import CargaMasiva from "./CargaMasiva";
 import FotosSugeridas from "./FotosSugeridas";
 import FotosLote from "./FotosLote";
 import { BUCKET, comprimirImagen, rutaDeStorage, rutaFoto } from "@/lib/fotos";
+import { traerTodo } from "@/lib/paginar";
 
 const num = (s: string) => Number(s.replace(",", "."));
 const capitalizar = (s: string) => { const t = s.trim().replace(/\s+/g, " "); return t ? t[0].toUpperCase() + t.slice(1) : t; };
@@ -46,7 +47,7 @@ export default function Productos({ kiosco }: { kiosco: Kiosco }) {
   const refPrecio = useRef<HTMLInputElement>(null);
 
   const cargar = useCallback(async () => {
-    const { data, error } = await supabase.from("productos").select("*").eq("kiosco_id", kiosco.id).order("categoria").order("nombre").limit(2000);
+    const { data, error } = await traerTodo((d, h) => supabase.from("productos").select("*").eq("kiosco_id", kiosco.id).order("categoria").order("nombre").order("id").range(d, h));
     if (error) setAviso("No pudimos cargar el catálogo. Revisá la conexión."); else setLista((data ?? []) as Producto[]);
   }, [kiosco.id]);
   useEffect(() => { cargar(); }, [cargar]);

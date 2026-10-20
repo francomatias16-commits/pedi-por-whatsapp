@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase, type Kiosco, type Producto } from "@/lib/supabase";
 import { linkWhatsApp, normalizarTelefonoAR, peso } from "@/lib/whatsapp";
 import { mensajeErrorSql } from "@/lib/errores";
+import { traerTodo } from "@/lib/paginar";
 
 type Fuga = { cliente_id: string; nombre: string; telefono: string; compras: number; ultima_compra: string; dias_sin_comprar: number };
 type Regla = { id: string; tipo: "venta_supera" | "fiado_supera" | "stock_bajo_de"; umbral: number; activo: boolean };
@@ -47,7 +48,7 @@ export default function Radar({ kiosco }: { kiosco: Kiosco }) {
     setReglas((data ?? []) as Regla[]);
   }
   async function cargarProductos() {
-    const { data } = await supabase.from("productos").select("id,nombre,stock,stock_controlado").eq("kiosco_id", kiosco.id).eq("stock_controlado", true).order("nombre");
+    const { data } = await traerTodo((d, h) => supabase.from("productos").select("id,nombre,stock,stock_controlado").eq("kiosco_id", kiosco.id).eq("stock_controlado", true).order("nombre").order("id").range(d, h));
     setProductos((data ?? []) as Producto[]);
   }
   async function cargarLotes(p: string) {

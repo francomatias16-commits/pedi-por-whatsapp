@@ -4,7 +4,8 @@ import { CLUB_TOKEN_RE, type Tarjeta } from "@/lib/club";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: Request, { params }: { params: { token: string } }) {
+export async function GET(_req: Request, { params: parametros }: { params: Promise<{ token: string }> }) {
+  const params = await parametros;
   let local = "Mi tarjeta";
   if (CLUB_TOKEN_RE.test(params.token)) {
     const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);

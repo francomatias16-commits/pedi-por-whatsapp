@@ -9,7 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
+        with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run check:migraciones
       - run: npm run typecheck
@@ -36,7 +36,7 @@ jobs:
         if: env.E2E_URL != ''
       - uses: actions/setup-node@v4
         if: env.E2E_URL != ''
-        with: { node-version: 20, cache: npm }
+        with: { node-version: 22, cache: npm }
       - name: Instalar, compilar y correr Playwright
         if: env.E2E_URL != ''
         env:

@@ -8,6 +8,19 @@
 export type ParError = [string, string];
 
 export const ERRORES_SQL: ParError[] = [
+  ["venta_no_encontrada", "No encontramos esa venta."],
+  ["venta_anulada", "Esa venta está anulada: no se puede facturar."],
+  ["venta_sin_total", "Esa venta no tiene importe para facturar."],
+  ["devolucion_no_encontrada", "No encontramos esa devolución."],
+  ["arca_no_configurada", "La facturación electrónica todavía no está activada en este local."],
+  ["arca_sin_delegacion", "Falta terminar la conexión con ARCA. El dueño la completa en Mi negocio > Facturación electrónica."],
+  ["arca_sin_factura", "Esa venta no tiene factura emitida."],
+  ["arca_otro_ambiente", "La factura se emitió en otro ambiente de ARCA (prueba o real): no se puede asociar."],
+  ["arca_nc_sin_saldo", "Esa factura ya tiene notas de crédito por todo su importe."],
+  ["arca_nc_excede", "Las notas de crédito no pueden superar el importe de la factura."],
+  ["arca_estado_invalido", "Estado de comprobante inválido."],
+  ["venta_factura_en_curso", "La factura de esa venta todavía se está procesando. Esperá un momento y probá de nuevo."],
+  ["venta_facturada", "Esa venta tiene factura: primero emití la nota de crédito por el saldo (Buscar ventas > Facturación) y después podés anularla."],
   ["club_no_disponible", "Este local no tiene el club activo."],
   ["club_nombre_invalido", "Escribí tu nombre."],
   ["club_telefono_invalido", "Revisá tu número de teléfono."],

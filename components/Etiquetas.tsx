@@ -4,6 +4,7 @@ import JsBarcode from "jsbarcode";
 import { supabase, type Kiosco } from "@/lib/supabase";
 import { peso } from "@/lib/whatsapp";
 import type { Promo } from "@/lib/pos/promos";
+import { traerTodo } from "@/lib/paginar";
 import {
   CONFIG_DEFECTO, anchoHojaMm, expandir, precioEtiqueta, resolverCodigo, totalEtiquetas, validarConfig,
   type ConfigEtiquetas, type ProductoEtiqueta, type Seleccion,
@@ -41,7 +42,7 @@ export default function Etiquetas({ kiosco, precarga, onPrecargaUsada }: { kiosc
 
   const cargar = useCallback(async () => {
     const [p, pr, c] = await Promise.all([
-      supabase.from("productos").select("id,nombre,categoria,precio,barcode,plu,vendido_por_peso").eq("kiosco_id", kiosco.id).order("nombre"),
+      traerTodo((d, h) => supabase.from("productos").select("id,nombre,categoria,precio,barcode,plu,vendido_por_peso").eq("kiosco_id", kiosco.id).order("nombre").order("id").range(d, h)),
       supabase.from("pos_promos").select("id,nombre,tipo,producto_id,categoria,lleva,paga,pct,desde,hasta,activa").eq("kiosco_id", kiosco.id).eq("activa", true),
       supabase.from("config_etiquetas").select("ancho_mm,alto_mm,columnas,margen_mm,simbologia,mostrar_codigo,mostrar_promos").eq("kiosco_id", kiosco.id).maybeSingle(),
     ]);

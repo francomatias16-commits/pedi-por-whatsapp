@@ -15,6 +15,7 @@ import Promos from "./caja/Promos";
 import { exigeSupervisor, puedeAdministrarCaja, puedeConfigurarLocal, type Rol } from "@/lib/navegacion";
 import ConfigPos from "./caja/ConfigPos";
 import { reconectarImpresora } from "@/lib/pos/impresora";
+import { traerTodo } from "@/lib/paginar";
 
 type Seccion = "venta" | "ventas" | "buscar" | "movimientos" | "cierre" | "favoritos" | "promos" | "historial" | "config";
 // Lo de todos los días a la vista; lo ocasional queda en "Más".
@@ -58,7 +59,7 @@ export default function Caja({ kiosco, rol = "dueno" }: { kiosco: Kiosco; rol?: 
 
   const cargarCatalogo = useCallback(async () => {
     const [p, c, f, pm, cf] = await Promise.all([
-      supabase.from("productos").select("id,nombre,categoria,precio,barcode,stock,stock_controlado,disponible,vendido_por_peso,plu,permite_sin_stock").eq("kiosco_id", kiosco.id).order("nombre"),
+      traerTodo((d, h) => supabase.from("productos").select("id,nombre,categoria,precio,barcode,stock,stock_controlado,disponible,vendido_por_peso,plu,permite_sin_stock").eq("kiosco_id", kiosco.id).order("nombre").order("id").range(d, h)),
       supabase.from("clientes_saldo").select("id,nombre,telefono,saldo").eq("kiosco_id", kiosco.id).order("nombre"),
       supabase.from("pos_favoritos").select("producto_id,orden").eq("kiosco_id", kiosco.id).order("orden"),
       supabase.from("pos_promos").select("id,nombre,tipo,producto_id,categoria,lleva,paga,pct,desde,hasta,activa").eq("kiosco_id", kiosco.id).eq("activa", true),

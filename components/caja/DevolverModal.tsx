@@ -6,6 +6,7 @@ import { armarItemsDevolucion, cantidadATexto, parsearCantidad, reembolsoItem, r
 import { cargarVentaCompleta, type VentaCompleta } from "@/lib/pos/venta-remota";
 import { peso } from "@/lib/whatsapp";
 import { usePin } from "./PinModal";
+import { notaCreditoDeDevolucion } from "@/lib/arca/cliente";
 
 // Devolución parcial por renglón. Reembolsa lo que el cliente pagó de verdad (descuento prorrateado) y
 // impacta en la caja ABIERTA, aunque la venta sea de un turno anterior.
@@ -21,6 +22,7 @@ export default function DevolverModal({ kiosco, ventaId, numero, config, onCerra
   const [err, setErr] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [hecha, setHecha] = useState<{ numero: number; total: number } | null>(null);
+  const [notaCredito, setNotaCredito] = useState<{ tipo: "ninguna" | "ok" | "error"; texto: string } | null>(null);
   const { pedir, modal } = usePin(kiosco.id);
 
   useEffect(() => {
@@ -73,9 +75,11 @@ export default function DevolverModal({ kiosco, ventaId, numero, config, onCerra
       r = await llamar(t);
     }
     if (r.error) return setErr(r.error.message.includes("pin_requerido") ? "El PIN venció (dura 2 minutos). Probá de nuevo." : mensajeError(r.error.message));
-    const d = r.data as { numero: number; total: number };
+    const d = r.data as { devolucion_id: string; numero: number; total: number };
     setHecha({ numero: Number(d.numero), total: Number(d.total) });
     onHecho();
+    // Si la venta tenía Factura C, se emite la nota de crédito por esta devolución. Si falla, la devolución igual quedó registrada.
+    setNotaCredito(await notaCreditoDeDevolucion(kiosco.id, v.id, d.devolucion_id));
   }
 
   return (
@@ -87,6 +91,7 @@ export default function DevolverModal({ kiosco, ventaId, numero, config, onCerra
         {hecha ? (
           <>
             <p className="pos-aviso" role="status">Devolución #{hecha.numero} registrada: {peso(hecha.total)} por {ETIQUETA_MEDIO[medio].toLowerCase()}.</p>
+            {notaCredito && notaCredito.tipo !== "ninguna" && <p className={notaCredito.tipo === "error" ? "pos-error" : "pos-aviso"} role={notaCredito.tipo === "error" ? "alert" : "status"}>{notaCredito.texto}</p>}
             <div className="pos-modal-acciones"><button onClick={onCerrar}>Listo</button></div>
           </>
         ) : v && (
