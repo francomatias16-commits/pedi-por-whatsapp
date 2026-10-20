@@ -6,6 +6,7 @@ import { cargarVentaCompleta } from "@/lib/pos/venta-remota";
 import { peso } from "@/lib/whatsapp";
 import Ticket, { type TicketData } from "./Ticket";
 import DevolverModal from "./DevolverModal";
+import Facturacion from "./Facturacion";
 
 type Item = { id: string; nombre: string; cantidad: number; por_peso: boolean; neto: number; devuelto: number };
 type Res = { id: string; numero: number; total: number; anulada: boolean; created_at: string; cliente_nombre: string | null; items: Item[] };
@@ -77,6 +78,7 @@ export default function BuscarVentas({ kiosco, config, turnoAbierto, onCambio }:
                 </div>
               ))}
             </div>
+            <Facturacion kiosco={kiosco} ventaId={r.id} anulada={r.anulada} recarga={recarga} onCambio={onCambio} />
             <div className="pos-venta-acc">
               <button className="sec" onClick={() => reimprimir(r)}>Ver / reimprimir ticket</button>
               {devolvible(r) && turnoAbierto && <button className="sec" onClick={() => setDevolviendo(r)}>Devolver</button>}

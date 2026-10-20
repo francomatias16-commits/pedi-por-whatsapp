@@ -161,9 +161,9 @@ for f, a in (("club_bloqueo(%s,%s)", (ka, ana)), ("club_otorgar(%s,%s,%s)", (ka,
 
 # ===== 8) Rastro de quién canjeó y reporte por empleado
 as_("authenticated", A)
-cur.execute("select nombre, sum(canjes) from sellos_por_empleado(%s, current_date - 1, current_date + 1) group by nombre", (ka,)); filas = dict(cur.fetchall())
+cur.execute("select nombre, sum(canjes) from sellos_por_empleado(%s, (now() at time zone 'America/Argentina/Buenos_Aires')::date - 1, (now() at time zone 'America/Argentina/Buenos_Aires')::date + 1) group by nombre", (ka,)); filas = dict(cur.fetchall())
 ok(filas.get("encargado@test.com", 0) >= 2, "el reporte muestra los canjes del encargado")
-as_("authenticated", EN); ok(has(fails("select * from sellos_por_empleado(%s, current_date, current_date)", (ka,)), "no_autorizado"), "el encargado no ve el reporte por empleado")
+as_("authenticated", EN); ok(has(fails("select * from sellos_por_empleado(%s, (now() at time zone 'America/Argentina/Buenos_Aires')::date, (now() at time zone 'America/Argentina/Buenos_Aires')::date)", (ka,)), "no_autorizado"), "el encargado no ve el reporte por empleado")
 as_("postgres"); ok(one("select count(*) from sellos where origen='club' and usuario_id is not null") == 0, "los sellos del club los suma el cliente (sin usuario)")
 
 # ===== 9) Los toques del club cuentan como visitas para la lista de clientes que dejaron de venir

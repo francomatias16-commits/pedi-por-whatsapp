@@ -7,7 +7,10 @@ if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
     dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
     environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? "production",
     tracesSampleRate: 0.05,
-    sendDefaultPii: false,
+    dataCollection: { userInfo: false, cookies: false, httpBodies: [], urlQueryParams: false, stackFrameVariables: false },
     beforeSend: limpiarEvento,
   });
 }
+
+// Registra las navegaciones del App Router en Sentry (recomendado desde Next 15.3).
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

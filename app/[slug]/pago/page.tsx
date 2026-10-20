@@ -8,7 +8,8 @@ export const metadata: Metadata = { title: "Tu pago", robots: { index: false, fo
 
 // Pantalla de retorno de Mercado Pago: /<slug>/pago?pedido=<id>. Mercado Pago agrega sus propios parámetros, que se ignoran:
 // el estado real se consulta al servidor.
-export default async function PagoPage({ params, searchParams }: { params: { slug: string }; searchParams: { pedido?: string } }) {
+export default async function PagoPage({ params: parametros, searchParams: busqueda }: { params: Promise<{ slug: string }>; searchParams: Promise<{ pedido?: string }> }) {
+  const params = await parametros, searchParams = await busqueda;
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
   const { data: k } = await sb.from("kioscos").select("nombre,whatsapp,baja_solicitada_at").eq("slug", params.slug).maybeSingle();
   if (!k || k.baja_solicitada_at) notFound();

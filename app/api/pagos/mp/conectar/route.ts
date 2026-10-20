@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { cifrar, ultimos4 } from "@/lib/pagos/cifrado";
 import { ErrorMP, mpUsuario, tokenMPValido } from "@/lib/pagos/mp";
-import { crearAdmin, esDueno } from "@/lib/pagos/servidor";
+import { activarCobroOnline, crearAdmin, esDueno } from "@/lib/pagos/servidor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,13 +28,10 @@ export async function POST(req: Request) {
 
   const { error } = await admin.from("integraciones_pago").upsert({
     kiosco_id: kiosco, token_cifrado, webhook_secret_cifrado, token_ultimos4: ultimos4(token), mp_user_id: String(usuario.id),
-    activa: true, forma_conexion: "token", updated_at: new Date().toISOString(),
+    activa: true, forma_conexion: "token", refresh_token_cifrado: null, token_expira_at: null, renovando_hasta: null, updated_at: new Date().toISOString(),
   }, { onConflict: "kiosco_id" });
   if (error) return NextResponse.json({ error: "db" }, { status: 500 });
 
-  // Conectar es querer cobrar: se enciende el cobro online y Mercado Pago pasa a ser un medio de pago de la tienda.
-  const { data: k } = await admin.from("kioscos").select("medios_pago").eq("id", kiosco).maybeSingle();
-  const medios: string[] = k?.medios_pago ?? ["efectivo"];
-  await admin.from("kioscos").update({ cobro_online_activo: true, medios_pago: medios.includes("mercadopago") ? medios : [...medios, "mercadopago"] }).eq("id", kiosco);
+  await activarCobroOnline(admin, kiosco);
   return NextResponse.json({ conectada: true, mp_user_id: String(usuario.id), cuenta: usuario.nickname ?? null });
 }

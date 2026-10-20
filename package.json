@@ -2,6 +2,9 @@
   "name": "go-fluxo",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -15,7 +18,7 @@
     "test:fotos-limpieza": "node tests/fotos-limpieza.test.mjs",
     "test:fotos-lote": "node tests/fotos-lote.test.mjs",
     "test:franjas": "node tests/franjas.test.mjs",
-    "test": "npm run test:importar && npm run test:horario && npm run test:fotos && npm run test:fotos-sug && npm run test:fotos-desc && npm run test:fotos-limpieza && npm run test:fotos-lote && npm run test:push && npm run test:pos && npm run test:compras && npm run test:etiquetas && npm run test:fidelidad && npm run test:reposicion && npm run test:margen && npm run test:fiado && npm run test:fuga && npm run test:modificados && npm run test:conteo && npm run test:pedidos && npm run test:errores && npm run test:navegacion && npm run test:cierre && npm run test:pagos && npm run test:roles && npm run test:qr && npm run test:seguimiento && npm run test:zonas && npm run test:franjas && npm run test:club && npm run test:promos && npm run test:auditoria && npm run test:marca",
+    "test": "npm run test:importar && npm run test:horario && npm run test:fotos && npm run test:fotos-sug && npm run test:fotos-desc && npm run test:fotos-limpieza && npm run test:fotos-lote && npm run test:push && npm run test:pos && npm run test:compras && npm run test:etiquetas && npm run test:fidelidad && npm run test:reposicion && npm run test:margen && npm run test:fiado && npm run test:fuga && npm run test:modificados && npm run test:conteo && npm run test:pedidos && npm run test:errores && npm run test:navegacion && npm run test:cierre && npm run test:pagos && npm run test:roles && npm run test:qr && npm run test:seguimiento && npm run test:zonas && npm run test:franjas && npm run test:club && npm run test:promos && npm run test:auditoria && npm run test:marca && npm run test:paginar && npm run test:oauth && npm run test:arca",
     "test:navegacion": "node tests/navegacion.test.mjs",
     "test:club": "node tests/club.test.mjs",
     "test:promos": "node tests/promos.test.mjs",
@@ -43,15 +46,19 @@
     "test:responsive": "playwright test e2e/responsive.spec.ts",
     "test:qr": "node tests/qr.test.mjs",
     "test:seguimiento": "node tests/seguimiento.test.mjs",
-    "test:zonas": "node tests/zonas.test.mjs"
+    "test:zonas": "node tests/zonas.test.mjs",
+    "test:paginar": "node tests/paginar.test.mjs",
+    "test:oauth": "node tests/oauth.test.mjs",
+    "test:arca": "node tests/arca.test.mjs"
   },
   "dependencies": {
-    "@sentry/nextjs": "^8.55.2",
+    "@sentry/nextjs": "^11.8.0",
     "@supabase/supabase-js": "^2.45.0",
     "@zxing/browser": "^0.2.1",
     "@zxing/library": "^0.23.0",
     "jsbarcode": "^3.12.3",
-    "next": "^14.2.15",
+    "next": "^15.5.28",
+    "pdfkit": "^0.20.2",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -60,10 +67,14 @@
   "devDependencies": {
     "@playwright/test": "^1.64.1",
     "@types/node": "^20.14.0",
+    "@types/pdfkit": "^0.17.6",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@types/web-push": "^3.6.4",
     "typescript": "^5.5.0"
+  },
+  "overrides": {
+    "postcss": "^8.5.31"
   }
 }

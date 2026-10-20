@@ -5,6 +5,7 @@ import { ETIQUETA_MEDIO, cantidadTexto, fecha, hora, mensajeError, MEDIOS, neces
 import { peso } from "@/lib/whatsapp";
 import Ticket, { type TicketData } from "./Ticket";
 import DevolverModal from "./DevolverModal";
+import Facturacion from "./Facturacion";
 import { usePin } from "./PinModal";
 
 // Ventas del turno: buscar, ver ticket, reimprimir y anular con motivo.
@@ -17,6 +18,7 @@ export default function VentasTurno({ kiosco, resumen, abierto, config, onCambio
   const [ocupado, setOcupado] = useState(false);
   const [ticket, setTicket] = useState<TicketData | null>(null);
   const [devolviendo, setDevolviendo] = useState<Venta | null>(null);
+  const recargaFact = resumen.ventas.length + resumen.devoluciones.length; // cambia cuando hay una devolución o venta nueva
   const { pedir, modal: modalPin } = usePin(kiosco.id);
 
   const lista = useMemo(() => resumen.ventas.filter((v) => {
@@ -85,6 +87,7 @@ export default function VentasTurno({ kiosco, resumen, abierto, config, onCambio
             {v.vuelto > 0 && <div className="row mut"><span>Vuelto</span><span className="mono">{peso(v.vuelto)}</span></div>}
           </div>
           {v.anulada && v.anulada_motivo && <p className="mut">Motivo: {v.anulada_motivo}</p>}
+          <Facturacion kiosco={kiosco} ventaId={v.id} anulada={v.anulada} recarga={recargaFact} onCambio={onCambio} />
           <div className="pos-venta-acc">
             <button className="sec" onClick={() => verTicket(v)}>Ver ticket</button>
             {!v.anulada && abierto && <button className="sec" onClick={() => setDevolviendo(v)}>Devolver</button>}

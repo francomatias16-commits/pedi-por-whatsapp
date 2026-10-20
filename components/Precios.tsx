@@ -6,6 +6,7 @@ import { peso } from "@/lib/whatsapp";
 import { productosMargenBajo } from "@/lib/margen";
 import Pantalla from "@/components/ui/Pantalla";
 import Aviso from "@/components/ui/Aviso";
+import { traerTodo } from "@/lib/paginar";
 
 type Prev = { producto_id: string; nombre: string; categoria: string; precio_anterior: number; precio_nuevo: number };
 type Ajuste = { id: string; porcentaje: number; tipo: "porcentaje" | "margen"; categoria: string | null; cantidad: number; created_at: string; revertido_at: string | null };
@@ -33,12 +34,12 @@ export default function Precios({ kiosco }: { kiosco: Kiosco }) {
 
   const cargar = useCallback(async () => {
     const [c, h] = await Promise.all([
-      supabase.from("productos").select("categoria").eq("kiosco_id", kiosco.id),
+      traerTodo((d, h) => supabase.from("productos").select("id,categoria").eq("kiosco_id", kiosco.id).order("id").range(d, h)),
       supabase.from("ajustes_precios").select("id,porcentaje,tipo,categoria,cantidad,created_at,revertido_at").eq("kiosco_id", kiosco.id).order("created_at", { ascending: false }).limit(10),
     ]);
     setCats([...new Set((c.data ?? []).map((x) => x.categoria as string))].sort());
     setHist((h.data ?? []).map((a) => ({ ...a, porcentaje: Number(a.porcentaje) })) as Ajuste[]);
-    const { data: pr } = await supabase.from("productos").select("id,nombre,precio,costo").eq("kiosco_id", kiosco.id);
+    const { data: pr } = await traerTodo((d, h) => supabase.from("productos").select("id,nombre,precio,costo").eq("kiosco_id", kiosco.id).order("id").range(d, h));
     setProds((pr ?? []).map((p) => ({ id: p.id as string, nombre: p.nombre as string, precio: Number(p.precio), costo: p.costo === null ? null : Number(p.costo) })));
   }, [kiosco.id]);
   useEffect(() => { cargar(); }, [cargar]);

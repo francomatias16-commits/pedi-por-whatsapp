@@ -8,6 +8,7 @@ import { hayAyuda, linkAyuda } from "@/lib/ayuda";
 import Avisos from "@/components/Avisos";
 import MisDatos from "@/components/MisDatos";
 import CobroMP from "@/components/CobroMP";
+import FacturacionArca from "@/components/FacturacionArca";
 import Equipo from "@/components/Equipo";
 import ZonasEnvio from "@/components/ZonasEnvio";
 import FranjasEntrega from "@/components/FranjasEntrega";
@@ -137,6 +138,10 @@ export default function MiKiosco({ kiosco, onGuardado, onVerBienvenida }: { kios
 
       <Plegable titulo="Cobrar con Mercado Pago">
         <CobroMP kiosco={kiosco} onCambio={onGuardado} />
+      </Plegable>
+
+      <Plegable titulo="Facturación electrónica (ARCA)">
+        <FacturacionArca kiosco={kiosco} />
       </Plegable>
 
       <Plegable titulo="Mi equipo">
