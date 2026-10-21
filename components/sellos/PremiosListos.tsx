@@ -7,7 +7,7 @@ import type { Premio } from "@/lib/fidelidad";
 
 type Cli = { id: string; nombre: string; telefono: string; sellos_disponibles: number };
 
-/** Clientes que ya completaron la tarjeta: se les avisa con un toque (abre el chat) y el premio se canjea desde Clientes. */
+/** Clientes que ya completaron la tarjeta: se les avisa con un toque (abre el chat) y el premio se canjea desde la pestaña Clientes de Puntos. */
 export default function PremiosListos({ kiosco, premio }: { kiosco: Kiosco; premio: Premio | null }) {
   const [lista, setLista] = useState<Cli[] | null>(null);
   const meta = premio?.costo_sellos ?? null;
@@ -24,7 +24,7 @@ export default function PremiosListos({ kiosco, premio }: { kiosco: Kiosco; prem
   return (
     <div className="card">
       <h3>Tarjetas completas ({lista.length})</h3>
-      <p className="mut" style={{ marginTop: 0 }}>Ya juntaron {premio.costo_sellos} sellos. Avisales con un toque; cuando vienen, canjeás el premio desde Clientes.</p>
+      <p className="mut" style={{ marginTop: 0 }}>Ya juntaron {premio.costo_sellos} sellos. Avisales con un toque; cuando vienen, canjeás el premio desde la pestaña Clientes.</p>
       {lista.map((c) => (
         <div className="row fila-sep" key={c.id}>
           <span><b>{c.nombre}</b> · {c.sellos_disponibles} sellos</span>

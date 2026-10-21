@@ -3,7 +3,7 @@ import { useConfirmar } from "@/components/ui/Confirmar";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase, type Kiosco } from "@/lib/supabase";
 import { linkWhatsApp, normalizarTelefonoAR } from "@/lib/whatsapp";
-import { linkTarjeta, mensajeTarjeta } from "@/lib/club";
+import { linkTarjeta, mensajeTarjeta, resumenVisitas, textoVisitas, type SelloVisita } from "@/lib/club";
 import { mensajeErrorSql } from "@/lib/errores";
 import { describirPremio, mensajeFidelidad, type Campana, type Premio } from "@/lib/fidelidad";
 
@@ -18,6 +18,8 @@ export default function ClientesSellos({ kiosco, campanas, premios }: { kiosco: 
   const [busca, setBusca] = useState("");
   const [abierto, setAbierto] = useState<string | null>(null);
   const [movs, setMovs] = useState<Mov[]>([]);
+  const [visitas, setVisitas] = useState<string>("");
+  const [soloClub, setSoloClub] = useState(0);
   const [msg, setMsg] = useState("");
   const [tel, setTel] = useState(""); const [nombre, setNombre] = useState(""); const [accion, setAccion] = useState("");
   const [ajuste, setAjuste] = useState<{ id: string; cant: string; motivo: string } | null>(null);
@@ -37,10 +39,13 @@ export default function ClientesSellos({ kiosco, campanas, premios }: { kiosco: 
   }, [lista, busca]);
 
   async function historial(id: string) {
-    const [s, c] = await Promise.all([
+    const [s, c, v] = await Promise.all([
       supabase.from("sellos").select("id,origen,cantidad,motivo,anulado,created_at,fidelidad_campanas(nombre)").eq("cliente_id", id).order("created_at", { ascending: false }).limit(20),
       supabase.from("canjes").select("id,premio_nombre,sellos,anulado,created_at").eq("cliente_id", id).order("created_at", { ascending: false }).limit(10),
+      supabase.from("sellos").select("created_at,origen,cantidad,anulado").eq("cliente_id", id).order("created_at", { ascending: false }).limit(1000),
     ]);
+    const rv = resumenVisitas((v.data ?? []) as SelloVisita[]);
+    setVisitas(textoVisitas(rv)); setSoloClub(rv.soloClub);
     const filas: Mov[] = [
       ...((s.data ?? []) as unknown as { id: string; origen: string; cantidad: number; motivo: string | null; anulado: boolean; created_at: string; fidelidad_campanas: { nombre: string } | null }[]).map((x) => ({
         clave: "s" + x.id, fecha: x.created_at, sello_id: x.id, anulado: x.anulado,
@@ -151,7 +156,9 @@ export default function ClientesSellos({ kiosco, campanas, premios }: { kiosco: 
               </div>
             )}
             {abierto === c.id && (
-              <ul style={{ margin: "10px 0 0", paddingLeft: 20 }} className="mut">
+              <>
+              <p style={{ margin: "10px 0 0" }}><b>Visitas:</b> {visitas}{soloClub > 0 ? <span className="mut"> {soloClub} de ellas solo por toque en la tarjeta del club, sin venta registrada.</span> : null}</p>
+              <ul style={{ margin: "6px 0 0", paddingLeft: 20 }} className="mut">
                 {movs.length === 0 && <li>Sin movimientos.</li>}
                 {movs.map((m) => (
                   <li key={m.clave} style={{ textDecoration: m.anulado ? "line-through" : undefined }}>
@@ -162,6 +169,7 @@ export default function ClientesSellos({ kiosco, campanas, premios }: { kiosco: 
                   </li>
                 ))}
               </ul>
+              </>
             )}
           </div>
         );

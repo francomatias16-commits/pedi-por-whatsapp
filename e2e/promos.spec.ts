@@ -17,14 +17,20 @@ async function entrarAlPanel(page: Page, ruta: string) {
   if (ruta !== "/panel") await page.goto(ruta);
 }
 const pestaña = (page: Page, nombre: string) => page.getByRole("tab", { name: nombre, exact: true });
+// Los pasos de "Mi programa" son bloques que se abren con un toque: se abre solo si está cerrado.
+async function abrirPaso(page: Page, titulo: string) {
+  const bloque = page.locator("details.plegable", { has: page.locator("summary", { hasText: titulo }) });
+  if (!(await bloque.evaluate((e) => (e as HTMLDetailsElement).open))) await bloque.locator("summary").click();
+}
 
 test.describe("panel: promos, club y sorteos", () => {
   test.skip(!MAIL || !CLAVE, "Faltan E2E_PANEL_MAIL y E2E_PANEL_CLAVE");
 
   test("premios: vista previa para el cliente y deshacer", async ({ page }) => {
     const nombre = `Premio E2E ${unico()}`;
-    await entrarAlPanel(page, "/panel/clientes/puntos");
-    await pestaña(page, "Premios").click();
+    await entrarAlPanel(page, "/panel/puntos");
+    await pestaña(page, "Mi programa").click();
+    await abrirPaso(page, "3. Más premios");
     await page.getByRole("button", { name: "Nuevo premio" }).click();
     await page.getByLabel("Nombre").fill(nombre);
     await page.getByLabel("Costo en sellos").fill("7");
@@ -43,8 +49,9 @@ test.describe("panel: promos, club y sorteos", () => {
 
   test("premios: pausar y deshacer vuelve a activarlo; borrar y deshacer lo recrea", async ({ page }) => {
     const nombre = `Premio E2E ${unico()}`;
-    await entrarAlPanel(page, "/panel/clientes/puntos");
-    await pestaña(page, "Premios").click();
+    await entrarAlPanel(page, "/panel/puntos");
+    await pestaña(page, "Mi programa").click();
+    await abrirPaso(page, "3. Más premios");
     await page.getByRole("button", { name: "Nuevo premio" }).click();
     await page.getByLabel("Nombre").fill(nombre);
     await page.getByRole("button", { name: "Guardar premio" }).click();
@@ -70,8 +77,9 @@ test.describe("panel: promos, club y sorteos", () => {
 
   test("campañas: vista previa para el cliente y deshacer", async ({ page }) => {
     const nombre = `Campaña E2E ${unico()}`;
-    await entrarAlPanel(page, "/panel/clientes/puntos");
-    await pestaña(page, "Cómo se suman").click();
+    await entrarAlPanel(page, "/panel/puntos");
+    await pestaña(page, "Mi programa").click();
+    await abrirPaso(page, "2. Cómo se suman");
     await page.getByRole("button", { name: "Desde cero" }).click();
     await page.getByLabel("Nombre").fill(nombre);
     await expect(page.getByText("Así lo verá el cliente")).toBeVisible();
@@ -86,7 +94,8 @@ test.describe("panel: promos, club y sorteos", () => {
   });
 
   test("club: la regla simple muestra cómo la ve el cliente", async ({ page }) => {
-    await entrarAlPanel(page, "/panel/clientes/puntos");
+    await entrarAlPanel(page, "/panel/puntos");
+    await pestaña(page, "Mi programa").click();
     await page.getByLabel("Qué se llevan").fill("Gaseosa E2E");
     await page.getByLabel("Cada cuántos sellos").fill("8");
     await expect(page.getByText("Cada compra suma sellos. Al juntar 8 sellos te llevás Gaseosa E2E.")).toBeVisible();
@@ -96,7 +105,8 @@ test.describe("panel: promos, club y sorteos", () => {
 
   test("sorteos: se arma, no se puede sortear sin permiso y se cancela", async ({ page }) => {
     const nombre = `Sorteo E2E ${unico()}`;
-    await entrarAlPanel(page, "/panel/clientes/puntos");
+    await entrarAlPanel(page, "/panel/puntos");
+    await pestaña(page, "Promociones").click();
     const seccion = page.locator(".card", { has: page.getByRole("heading", { name: "Sorteos", exact: true }) });
     await seccion.getByLabel("Nombre").fill(nombre);
     await seccion.getByLabel("Premio 1").fill("Un premio de prueba");

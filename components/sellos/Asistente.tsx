@@ -11,7 +11,7 @@ import Aviso from "@/components/ui/Aviso";
 const OPCIONES: { id: "compra" | "monto" | "doble"; titulo: string; ayuda: string; form: Partial<FormCampana> }[] = [
   { id: "compra", titulo: "Por cada compra", ayuda: "1 punto cada vez que compra, en el mostrador o por pedido.", form: { nombre: "Puntos por compra", tipo: "visita", sellos: "1" } },
   { id: "monto", titulo: "Por cada monto gastado", ayuda: "1 punto cada $1.000 que gasta.", form: { nombre: "Puntos por monto", tipo: "monto", sellos: "1", por_monto: "1000" } },
-  { id: "doble", titulo: "Doble los martes", ayuda: "Los martes suma el doble. Podés cambiar el día después en “Cómo se suman”.", form: { nombre: "Martes de puntos dobles", tipo: "multiplicador", multiplicador: "2", dias_semana: [2] } },
+  { id: "doble", titulo: "Doble los martes", ayuda: "Los martes suma el doble. Podés cambiar el día después en “Mi programa”, paso 2.", form: { nombre: "Martes de puntos dobles", tipo: "multiplicador", multiplicador: "2", dias_semana: [2] } },
 ];
 
 // Asistente en 3 pasos: ¿cuándo suma puntos? → ¿qué premio ofrecés? → ver un ejemplo y guardar.
