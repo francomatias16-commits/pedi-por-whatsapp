@@ -58,18 +58,21 @@ export default function Caja({ kiosco, rol = "dueno" }: { kiosco: Kiosco; rol?: 
   }, [kiosco.id]);
 
   const cargarCatalogo = useCallback(async () => {
-    const [p, c, f, pm, cf] = await Promise.all([
+    const [p, c, f, pm, cf, vc] = await Promise.all([
       traerTodo((d, h) => supabase.from("productos").select("id,nombre,categoria,precio,barcode,stock,stock_controlado,disponible,vendido_por_peso,plu,permite_sin_stock").eq("kiosco_id", kiosco.id).order("nombre").order("id").range(d, h)),
       supabase.from("clientes_saldo").select("id,nombre,telefono,saldo").eq("kiosco_id", kiosco.id).order("nombre"),
       supabase.from("pos_favoritos").select("producto_id,orden").eq("kiosco_id", kiosco.id).order("orden"),
       supabase.from("pos_promos").select("id,nombre,tipo,producto_id,categoria,lleva,paga,pct,desde,hasta,activa").eq("kiosco_id", kiosco.id).eq("activa", true),
       // Por RPC: pos_config guarda el hash del PIN y solo la lee el dueño; el cajero y el encargado reciben estas columnas sin secretos.
       supabase.rpc("pos_config_publica", { p_kiosco: kiosco.id }),
+      // Avisos de vencimiento: es un extra; si falla, la caja funciona igual.
+      supabase.rpc("pos_vencimientos", { p_kiosco: kiosco.id }),
     ]);
+    const venceDe = new Map<string, string>(((vc.data ?? []) as { producto_id: string; vence: string }[]).map((x) => [x.producto_id, x.vence]));
     if (pm.data) setPromos(pm.data.map((x) => ({ ...x, pct: x.pct == null ? null : Number(x.pct) })) as Promo[]);
     // El cajero siempre necesita un supervisor para anular o devolver (lo exige la base); acá se pide el PIN aunque el local lo tenga apagado.
     if (cf.data) setConfig({ ...CONFIG_POR_DEFECTO, ...(cf.data as Partial<PosConfig>), ...(exigeSupervisor(rol) ? { pin_anular: true, pin_devolucion: true } : {}) });
-    if (p.data) setProductos(p.data.map((x) => ({ ...x, precio: Number(x.precio), stock: Number(x.stock ?? 0), stock_controlado: !!x.stock_controlado, vendido_por_peso: !!x.vendido_por_peso, permite_sin_stock: !!x.permite_sin_stock, plu: x.plu ?? null })) as ProductoPos[]);
+    if (p.data) setProductos(p.data.map((x) => ({ ...x, precio: Number(x.precio), stock: Number(x.stock ?? 0), stock_controlado: !!x.stock_controlado, vendido_por_peso: !!x.vendido_por_peso, permite_sin_stock: !!x.permite_sin_stock, plu: x.plu ?? null, vence: venceDe.get(x.id as string) ?? null })) as ProductoPos[]);
     if (c.data) setClientes(c.data.map((x) => ({ ...x, saldo: Number(x.saldo) })) as Cliente[]);
     if (f.data) setFavoritos(f.data.map((x) => x.producto_id as string));
   }, [kiosco.id, rol]);

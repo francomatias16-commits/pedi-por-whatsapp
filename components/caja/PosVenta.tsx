@@ -13,6 +13,8 @@ import { pitido } from "@/lib/pos/sonido";
 import { pulsoCajon, ticketEscPos } from "@/lib/pos/escpos";
 import { enviarAImpresora } from "@/lib/pos/impresora";
 import { peso } from "@/lib/whatsapp";
+import { avisoVencimiento } from "@/lib/vencimiento";
+import Aviso from "@/components/ui/Aviso";
 import Escaner from "../Escaner";
 import VincularCelular from "./VincularCelular";
 import { useVinculoCelular } from "./useVinculoCelular";
@@ -52,6 +54,8 @@ export default function PosVenta({ kiosco, turno, productos, favoritos, clientes
   const [ayuda, setAyuda] = useState(false);
   const [escaneando, setEscaneando] = useState(false);
   const [msg, setMsg] = useState("");
+  // Aviso (no bloquea la venta): el producto recién agregado tiene unidades vencidas o por vencer.
+  const [avisoVenc, setAvisoVenc] = useState<string | null>(null);
   // Producto que se quedó sin stock en el último intento (ofrece "Cargar stock" sin perder el carrito).
   const [faltante, setFaltante] = useState<ProductoPos | null>(null);
   const [cargando, setCargando] = useState<ProductoPos | null>(null);
@@ -129,6 +133,7 @@ export default function PosVenta({ kiosco, turno, productos, favoritos, clientes
       : [...ls, { producto_id: p.id, nombre: p.nombre, categoria: p.categoria, precio: p.precio, cantidad: suma, stock_controlado: p.stock_controlado, stock: libre, por_peso: p.vendido_por_peso, descuento_pct: 0, permite_sin_stock: p.permite_sin_stock }];
     lineasRef.current = nuevo; // inmediato: dos lecturas seguidas no se pisan
     setLineas(nuevo);
+    setAvisoVenc(p.stock_controlado ? avisoVencimiento(p.nombre, p.vence) : null);
     sonar("ok");
     setBusqueda("");
     setPesando(null);
@@ -165,7 +170,7 @@ export default function PosVenta({ kiosco, turno, productos, favoritos, clientes
   const vaciar = useCallback(async () => {
     if (!lineas.length && !cliente && !descPct) return;
     if (lineas.length && !(await confirmar({ titulo: "¿Vaciar el carrito?", detalle: "Se borran los productos cargados en esta venta.", confirmar: "Sí, vaciar", peligro: true }))) return;
-    setLineas([]); setDescPct(""); setCliente(null); setMsg("");
+    setLineas([]); setDescPct(""); setCliente(null); setMsg(""); setAvisoVenc(null);
     inputProd.current?.focus();
   }, [lineas.length, cliente, descPct, confirmar]);
 
@@ -201,7 +206,7 @@ export default function PosVenta({ kiosco, turno, productos, favoritos, clientes
     const enviado = await enviarAImpresora(config.imprimir_auto ? ticketEscPos(t, config.ticket_ancho, { cajon: abre }) : pulsoCajon());
     if (!enviado && config.imprimir_auto) setTimeout(() => window.print(), 300);
   };
-  const terminarVenta = () => { setCobrando(false); setLineas([]); setDescPct(""); setCliente(null); setMsg(""); sonar("venta"); void qr.refrescar(); };
+  const terminarVenta = () => { setCobrando(false); setLineas([]); setDescPct(""); setCliente(null); setMsg(""); setAvisoVenc(null); sonar("venta"); void qr.refrescar(); };
 
   /** Después de cobrar: registra el canje (si hubo) y avisa cuántos sellos ganó el cliente. Si falla, la venta ya está hecha: se avisa. */
   async function cierreFidelidad(cli: Cliente | null, pre: Premio | null, ventaId: string) {
@@ -406,6 +411,7 @@ export default function PosVenta({ kiosco, turno, productos, favoritos, clientes
         </div>
         {qr.activo && <QrSinVenta cobros={qr.sinVenta} />}
         {msg && <p className="pos-error" role="alert">{msg}</p>}
+        {!msg && avisoVenc && <Aviso tipo="alerta">{avisoVenc}</Aviso>}
         {faltante && !cargando && puedeCargarStock && <button className="sec" style={{ marginBottom: 8 }} onClick={() => setCargando(faltante)}>Cargar stock de {faltante.nombre} ahora</button>}
         {favs.length > 0 && (
           <div className="pos-favoritos" aria-label="Favoritos">

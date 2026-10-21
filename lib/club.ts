@@ -5,7 +5,7 @@ export const CLUB_TOKEN_RE = /^[0-9a-f]{32}$/;
 /** Papelito: 6 caracteres sin I, L, O, 0 ni 1 (igual que la generación en la 0044). Se acepta en minúsculas y con espacios o guiones. */
 export const CODIGO_CLUB_RE = /^[2-9A-HJKMNP-Z]{6}$/;
 export const normalizarCodigoClub = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
-export const RUTA_CLUB_PANEL = "/panel/puntos"; // misma ruta que rutaDeTab("sellos")
+export const RUTA_CLUB_PANEL = "/panel/clientes/puntos"; // misma ruta que rutaDeTab("sellos")
 export const claveTokenLocal = (slug: string) => `gf-club-${slug}`;
 
 export type Bloqueo = { codigo: "club_inactivo" | "club_fuera_horario" | "club_limite_dia" | "club_espera"; espera_seg?: number };

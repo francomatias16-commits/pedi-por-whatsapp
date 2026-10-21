@@ -135,7 +135,7 @@ export default function Radar({ kiosco }: { kiosco: Kiosco }) {
 
       <section className="card">
         <h2>Vencimientos</h2>
-        <p className="mut">Cargá la fecha de vencimiento de la mercadería que ya está en stock. El sistema asume que se vende primero lo que vence antes. Esto no cambia precios: si algo vence pronto, conviene liquidarlo a mano.</p>
+        <p className="mut">Cargá la fecha de vencimiento de la mercadería que ya está en stock. Cuando vendés en la Caja, el sistema descuenta primero del lote que vence antes, y si anulás o devolvés una venta, la mercadería vuelve a ese mismo lote. Esto no cambia precios: si algo vence pronto, conviene liquidarlo a mano.</p>
         <select value={prodId} onChange={(e) => { setProdId(e.target.value); cargarLotes(e.target.value); }} aria-label="Producto">
           <option value="">Elegí un producto con control de stock</option>
           {productos.map((p) => <option key={p.id} value={p.id}>{p.nombre} (stock {p.stock})</option>)}

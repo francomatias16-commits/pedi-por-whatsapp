@@ -42,6 +42,8 @@ export type ReporteZ = {
 export type ProductoPos = {
   id: string; nombre: string; categoria: string; precio: number; barcode: string | null; stock: number; stock_controlado: boolean; disponible: boolean;
   vendido_por_peso: boolean; plu: string | null; permite_sin_stock: boolean;
+  /** Vencimiento del lote que sale primero (YYYY-MM-DD); solo si el dueño cargó lotes. */
+  vence?: string | null;
 };
 export type PosConfig = {
   sonido: boolean; imprimir_auto: boolean; abrir_cajon: boolean; ticket_encabezado: string | null; ticket_pie: string | null; ticket_ancho: 58 | 80;

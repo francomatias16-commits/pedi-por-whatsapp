@@ -11,21 +11,18 @@ const todas = N.DESTINOS.flatMap((d) => d.subs.map((s) => s.tab));
 eq("13 pantallas", todas.length, 13);
 eq("sin repetidas", new Set(todas).size, 13);
 for (const t of todas) eq(`ida y vuelta ${t}`, N.tabDeRuta(N.segmentosDe(N.rutaDeTab(t))), t);
-eq("8 destinos", N.DESTINOS.length, 8);
+eq("7 destinos", N.DESTINOS.length, 7);
 
 eq("inicio", N.rutaDeTab("resumen"), "/panel");
 eq("caja", N.rutaDeTab("caja"), "/panel/vender");
 eq("precios", N.rutaDeTab("precios"), "/panel/productos/precios");
 eq("reponer es la primera de compras", N.rutaDeTab("reponer"), "/panel/compras");
 eq("proveedores", N.rutaDeTab("proveedores"), "/panel/compras/proveedores");
-eq("destino", N.destinoDeTab("sellos"), "puntos");
-eq("puntos tiene su propia ruta", N.rutaDeTab("sellos"), "/panel/puntos");
-eq("link viejo de puntos sigue andando", N.tabDeRuta(["clientes", "puntos"]), "sellos");
-eq("clientes ya no trae puntos", N.DESTINOS.find((d) => d.id === "clientes").subs.map((s) => s.tab), ["fiado", "radar"]);
+eq("destino", N.destinoDeTab("sellos"), "clientes");
 
 eq("segmentos raíz", N.segmentosDe("/panel"), []);
 eq("segmentos barra final", N.segmentosDe("/panel/"), []);
-eq("segmentos 2", N.segmentosDe("/panel/puntos"), ["puntos"]);
+eq("segmentos 2", N.segmentosDe("/panel/clientes/puntos"), ["clientes", "puntos"]);
 eq("raíz abre inicio", N.tabDeRuta([]), "resumen");
 eq("destino sin slug abre su primera", N.tabDeRuta(["productos"]), "productos");
 eq("slug raro abre la primera", N.tabDeRuta(["productos", "xx"]), "productos");

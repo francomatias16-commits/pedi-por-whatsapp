@@ -1,0 +1,195 @@
+diff --git a/app/api/pagos/mp/qr/reembolsar/route.ts b/app/api/pagos/mp/qr/reembolsar/route.ts
+new file mode 100644
+index 0000000..d514f50
+--- /dev/null
++++ b/app/api/pagos/mp/qr/reembolsar/route.ts
+@@ -0,0 +1,51 @@
++// Reembolsa a Mercado Pago el cobro QR de una venta devuelta en la caja. Se llama después de registrar
++// la devolución. Si Mercado Pago rechaza o se corta, queda el error en el cobro y se puede reintentar.
++import { NextResponse } from "next/server";
++import { ErrorMP, UUID, mpOrden, mpReembolsarOrden, type OrdenMP } from "@/lib/pagos/mp";
++import { credenciales, crearAdmin, rolDe } from "@/lib/pagos/servidor";
++
++export const runtime = "nodejs";
++export const dynamic = "force-dynamic";
++
++export async function POST(req: Request) {
++  const body = await req.json().catch(() => null);
++  const venta = String(body?.venta ?? "");
++  const monto = Number(body?.monto);
++  if (!UUID.test(venta) || !Number.isFinite(monto) || monto <= 0) return NextResponse.json({ error: "monto_invalido" }, { status: 400 });
++
++  const admin = crearAdmin();
++  const { data: cobro } = await admin.from("cobros_qr_pos")
++    .select("id, kiosco_id, monto, estado, mp_order_id").eq("venta_id", venta).maybeSingle();
++  // La venta no se cobró por QR: no hay nada que devolver a Mercado Pago.
++  if (!cobro) return NextResponse.json({ estado: "sin_cobro_mp" });
++
++  if (!(await rolDe(req, admin, cobro.kiosco_id, ["encargado", "dueno"]))) return NextResponse.json({ error: "no_autorizado" }, { status: 401 });
++  const cred = await credenciales(admin, cobro.kiosco_id).catch(() => null);
++  if (!cred?.activa) return NextResponse.json({ error: "mp_desconectado" }, { status: 409 });
++  if (!cobro.mp_order_id) return NextResponse.json({ error: "cobro_sin_orden" }, { status: 409 });
++
++  const { data: res, error: errRes } = await admin.rpc("qr_reservar_reembolso", { p_cobro: cobro.id, p_monto: monto });
++  if (errRes) return NextResponse.json({ error: errRes.message.includes("reembolso_en_curso") ? "reembolso_en_curso" : "reembolso_rechazado" }, { status: 409 });
++
++  const antes = Number((res as { reembolsado_antes: number }).reembolsado_antes);
++  const esTotal = Math.abs(antes + monto - Number(cobro.monto)) < 0.005;
++  // Clave fija por cobro, reembolso acumulado y monto: reintentar no duplica el reembolso.
++  const clave = `${cobro.id}-r${antes.toFixed(2)}-${monto.toFixed(2)}`;
++  try {
++    let cuerpo: unknown = undefined;
++    if (!esTotal) {
++      const orden = (await mpOrden(cred.token, cobro.mp_order_id)) as OrdenMP;
++      const pagoId = orden.transactions?.payments?.[0]?.id;
++      if (!pagoId) throw new Error("sin_pago_en_orden");
++      cuerpo = { transactions: [{ id: pagoId, amount: monto.toFixed(2) }] };
++    }
++    const r = await mpReembolsarOrden(cred.token, cobro.mp_order_id, cuerpo, clave);
++    const ref = r.transactions?.refunds?.[0]?.id ?? null;
++    await admin.rpc("qr_confirmar_reembolso", { p_cobro: cobro.id, p_ok: true, p_ref: ref, p_error: null });
++    return NextResponse.json({ estado: "reembolso_enviado", monto, total: esTotal });
++  } catch (e) {
++    const codigo = e instanceof ErrorMP ? `mp_${e.status}` : (e instanceof Error && e.message === "sin_pago_en_orden" ? "sin_pago_en_orden" : "error_reembolso");
++    await admin.rpc("qr_confirmar_reembolso", { p_cobro: cobro.id, p_ok: false, p_ref: null, p_error: codigo });
++    return NextResponse.json({ estado: "error", error: codigo }, { status: 502 });
++  }
++}
+diff --git a/components/caja/DevolverModal.tsx b/components/caja/DevolverModal.tsx
+index c84c26c..ec69f80 100644
+--- a/components/caja/DevolverModal.tsx
++++ b/components/caja/DevolverModal.tsx
+@@ -6,6 +6,7 @@ import { armarItemsDevolucion, cantidadATexto, parsearCantidad, reembolsoItem, r
+ import { cargarVentaCompleta, type VentaCompleta } from "@/lib/pos/venta-remota";
+ import { peso } from "@/lib/whatsapp";
+ import { usePin } from "./PinModal";
++import { llamarQR } from "@/lib/pagos/qr-cliente";
+ import { notaCreditoDeDevolucion } from "@/lib/arca/cliente";
+ 
+ // Devolución parcial por renglón. Reembolsa lo que el cliente pagó de verdad (descuento prorrateado) y
+@@ -23,6 +24,7 @@ export default function DevolverModal({ kiosco, ventaId, numero, config, onCerra
+   const [ocupado, setOcupado] = useState(false);
+   const [hecha, setHecha] = useState<{ numero: number; total: number } | null>(null);
+   const [notaCredito, setNotaCredito] = useState<{ tipo: "ninguna" | "ok" | "error"; texto: string } | null>(null);
++  const [reembolso, setReembolso] = useState<{ ventaId: string; monto: number; error: string } | null>(null);
+   const { pedir, modal } = usePin(kiosco.id);
+ 
+   useEffect(() => {
+@@ -52,6 +54,15 @@ export default function DevolverModal({ kiosco, ventaId, numero, config, onCerra
+     setTxt(Object.fromEntries(items.filter((i) => restante(i) > 0).map((i) => [i.id, cantidadATexto(restante(i), i.por_peso)])));
+   };
+ 
++  // Si la venta se cobró con QR de Mercado Pago, el reembolso va a Mercado Pago (no a la caja). Si no hay cobro QR, no hace nada.
++  async function reembolsarMP(ventaId: string, monto: number) {
++    setReembolso(null);
++    const r = await llamarQR("/api/pagos/mp/qr/reembolsar", { venta: ventaId, monto });
++    const estado = String(r.j.estado ?? "");
++    if (estado === "sin_cobro_mp" || estado === "reembolso_enviado") return;
++    setReembolso({ ventaId, monto, error: String(r.j.error ?? "error_reembolso") });
++  }
++
+   async function confirmar() {
+     if (!v || ocupado || total <= 0 || motivo.trim().length < 3) return;
+     setErr("");
+@@ -77,6 +88,7 @@ export default function DevolverModal({ kiosco, ventaId, numero, config, onCerra
+     if (r.error) return setErr(r.error.message.includes("pin_requerido") ? "El PIN venció (dura 2 minutos). Probá de nuevo." : mensajeError(r.error.message));
+     const d = r.data as { devolucion_id: string; numero: number; total: number };
+     setHecha({ numero: Number(d.numero), total: Number(d.total) });
++    if (medio === "mercadopago") void reembolsarMP(v.id, Number(d.total));
+     onHecho();
+     // Si la venta tenía Factura C, se emite la nota de crédito por esta devolución. Si falla, la devolución igual quedó registrada.
+     setNotaCredito(await notaCreditoDeDevolucion(kiosco.id, v.id, d.devolucion_id));
+@@ -92,6 +104,13 @@ export default function DevolverModal({ kiosco, ventaId, numero, config, onCerra
+           <>
+             <p className="pos-aviso" role="status">Devolución #{hecha.numero} registrada: {peso(hecha.total)} por {ETIQUETA_MEDIO[medio].toLowerCase()}.</p>
+             {notaCredito && notaCredito.tipo !== "ninguna" && <p className={notaCredito.tipo === "error" ? "pos-error" : "pos-aviso"} role={notaCredito.tipo === "error" ? "alert" : "status"}>{notaCredito.texto}</p>}
++            {reembolso && (
++              <p className="pos-error" role="alert">
++                La devolución quedó registrada, pero Mercado Pago no aceptó el reembolso ({reembolso.error}).{" "}
++                <button className="sec" onClick={() => void reembolsarMP(reembolso.ventaId, reembolso.monto)}>Reintentar reembolso</button>{" "}
++                Si sigue fallando, reembolsalo desde tu cuenta de Mercado Pago.
++              </p>
++            )}
+             <div className="pos-modal-acciones"><button onClick={onCerrar}>Listo</button></div>
+           </>
+         ) : v && (
+diff --git a/lib/pagos/mp.ts b/lib/pagos/mp.ts
+index a2187d7..bf8197a 100644
+--- a/lib/pagos/mp.ts
++++ b/lib/pagos/mp.ts
+@@ -113,3 +113,9 @@ export const mpOrden = (token: string, id: string) => mp<OrdenMP>(token, `/v1/or
+ // Solo se cancela una orden en estado "created"; si ya se pagó, Mercado Pago la rechaza y el cobro se reconcilia como aprobado.
+ export const mpCancelarOrdenQR = (token: string, id: string, idempotencia: string) =>
+   mp<OrdenMP>(token, `/v1/orders/${encodeURIComponent(id)}/cancel`, { method: "POST", headers: { "X-Idempotency-Key": idempotencia } });
++
++// Reembolso de una orden QR. Sin cuerpo = total; con transactions = parcial (solo si la orden está "processed").
++export const mpReembolsarOrden = (token: string, orden: string, cuerpo: unknown | undefined, idempotencia: string) =>
++  mp<{ id?: string; status?: string; transactions?: { refunds?: { id?: string; status?: string; amount?: string | number }[] } }>(
++    token, `/v1/orders/${encodeURIComponent(orden)}/refund`,
++    { method: "POST", body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo), headers: { "X-Idempotency-Key": idempotencia } });
+diff --git a/supabase/migrations/0061_reembolso_qr.sql b/supabase/migrations/0061_reembolso_qr.sql
+new file mode 100644
+index 0000000..112adc2
+--- /dev/null
++++ b/supabase/migrations/0061_reembolso_qr.sql
+@@ -0,0 +1,60 @@
++-- 0061: reembolso de cobros QR a Mercado Pago desde la devolución de la caja.
++-- Aditiva: sin DROP ni DELETE. Aplicar en el SQL Editor ANTES de subir el código.
++--
++-- Flujo: devolver_venta_mostrador registra la devolución en la caja; después el servidor
++-- llama a /v1/orders/{id}/refund y confirma acá. Si Mercado Pago rechaza o se corta,
++-- el reembolso queda con error y se puede reintentar sin duplicarlo (la clave de
++-- idempotencia es fija por cobro + monto acumulado).
++
++alter table public.cobros_qr_pos
++  add column if not exists reembolso_monto numeric(12,2) not null default 0 check (reembolso_monto >= 0),
++  add column if not exists reembolso_pendiente numeric(12,2) check (reembolso_pendiente > 0),
++  add column if not exists reembolso_ref text,
++  add column if not exists reembolso_error text;
++
++-- Reserva el reembolso antes de llamar a Mercado Pago. Un solo reembolso en curso por cobro.
++create or replace function public.qr_reservar_reembolso(p_cobro uuid, p_monto numeric)
++returns jsonb language plpgsql security definer set search_path = public as $$
++declare v public.cobros_qr_pos%rowtype;
++begin
++  select * into v from public.cobros_qr_pos where id = p_cobro for update;
++  if not found then raise exception 'cobro_no_encontrado'; end if;
++  if v.estado not in ('aprobado', 'reembolsado') then raise exception 'cobro_no_reembolsable'; end if;
++  if p_monto is null or p_monto <= 0 then raise exception 'monto_invalido'; end if;
++  if v.reembolso_pendiente is not null then raise exception 'reembolso_en_curso'; end if;
++  if v.reembolso_monto + p_monto > v.monto then raise exception 'reembolso_excede_cobro'; end if;
++  update public.cobros_qr_pos
++     set reembolso_pendiente = p_monto, reembolso_error = null, updated_at = now()
++   where id = p_cobro;
++  return jsonb_build_object('reembolsado_antes', v.reembolso_monto, 'monto', p_monto, 'cobro_monto', v.monto);
++end $$;
++
++-- Confirma el resultado de Mercado Pago. Si el reembolso acumulado cubre el cobro, el cobro queda reembolsado.
++create or replace function public.qr_confirmar_reembolso(p_cobro uuid, p_ok boolean, p_ref text, p_error text)
++returns jsonb language plpgsql security definer set search_path = public as $$
++declare v public.cobros_qr_pos%rowtype;
++begin
++  select * into v from public.cobros_qr_pos where id = p_cobro for update;
++  if not found then raise exception 'cobro_no_encontrado'; end if;
++  if v.reembolso_pendiente is null then return jsonb_build_object('resultado', 'sin_reembolso_en_curso'); end if;
++  if p_ok then
++    update public.cobros_qr_pos
++       set reembolso_monto = reembolso_monto + reembolso_pendiente,
++           reembolso_pendiente = null,
++           reembolso_ref = coalesce(p_ref, reembolso_ref),
++           reembolso_error = null,
++           estado = case when reembolso_monto + reembolso_pendiente >= monto then 'reembolsado' else estado end,
++           updated_at = now()
++     where id = p_cobro;
++    return jsonb_build_object('resultado', 'reembolsado');
++  end if;
++  update public.cobros_qr_pos
++     set reembolso_pendiente = null, reembolso_error = left(coalesce(p_error, 'error'), 200), updated_at = now()
++   where id = p_cobro;
++  return jsonb_build_object('resultado', 'error');
++end $$;
++
++revoke all on function public.qr_reservar_reembolso(uuid, numeric) from public, anon, authenticated;
++revoke all on function public.qr_confirmar_reembolso(uuid, boolean, text, text) from public, anon, authenticated;
++grant execute on function public.qr_reservar_reembolso(uuid, numeric) to service_role;
++grant execute on function public.qr_confirmar_reembolso(uuid, boolean, text, text) to service_role;
