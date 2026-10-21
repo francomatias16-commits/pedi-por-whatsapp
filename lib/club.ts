@@ -5,7 +5,7 @@ export const CLUB_TOKEN_RE = /^[0-9a-f]{32}$/;
 /** Papelito: 6 caracteres sin I, L, O, 0 ni 1 (igual que la generación en la 0044). Se acepta en minúsculas y con espacios o guiones. */
 export const CODIGO_CLUB_RE = /^[2-9A-HJKMNP-Z]{6}$/;
 export const normalizarCodigoClub = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
-export const RUTA_CLUB_PANEL = "/panel/clientes/puntos"; // misma ruta que rutaDeTab("sellos")
+export const RUTA_CLUB_PANEL = "/panel/puntos"; // misma ruta que rutaDeTab("sellos")
 export const claveTokenLocal = (slug: string) => `gf-club-${slug}`;
 
 export type Bloqueo = { codigo: "club_inactivo" | "club_fuera_horario" | "club_limite_dia" | "club_espera"; espera_seg?: number };
@@ -146,4 +146,51 @@ export function resumenLimites(a: AjustesClub): string {
   if (a.club_hora_desde && a.club_hora_hasta) partes.push(`solo de ${a.club_hora_desde.slice(0, 5)} a ${a.club_hora_hasta.slice(0, 5)}`);
   const t = partes.join(", ");
   return t.charAt(0).toUpperCase() + t.slice(1) + ".";
+}
+
+export type SelloVisita = { created_at: string; origen: string; cantidad: number; anulado: boolean };
+export type ResumenVisitas = {
+  visitas: number;            // días distintos con al menos un sello válido
+  primera: string | null;     // yyyy-mm-dd (hora argentina)
+  ultima: string | null;
+  diasDesdeUltima: number | null;
+  promedioDias: number | null; // días entre visitas (null con menos de 2 visitas)
+  ultimos30: number;
+  soloClub: number;           // visitas respaldadas únicamente por un toque del cliente en su tarjeta
+};
+
+const diaAR = (iso: string) => new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/Argentina/Buenos_Aires" });
+const msDia = (d: string) => Date.parse(d + "T00:00:00Z");
+
+/** Visitas de un cliente: cada día con un sello válido (no anulado, no ajuste manual) cuenta como una visita. */
+export function resumenVisitas(sellos: SelloVisita[], ahora: Date = new Date()): ResumenVisitas {
+  const porDia = new Map<string, Set<string>>();
+  for (const s of sellos) {
+    if (s.anulado || s.cantidad <= 0 || s.origen === "manual") continue;
+    const d = diaAR(s.created_at);
+    if (!porDia.has(d)) porDia.set(d, new Set());
+    porDia.get(d)!.add(s.origen);
+  }
+  const dias = [...porDia.keys()].sort();
+  if (!dias.length) return { visitas: 0, primera: null, ultima: null, diasDesdeUltima: null, promedioDias: null, ultimos30: 0, soloClub: 0 };
+  const hoy = msDia(diaAR(ahora.toISOString()));
+  const primera = dias[0], ultima = dias[dias.length - 1];
+  return {
+    visitas: dias.length, primera, ultima,
+    diasDesdeUltima: Math.round((hoy - msDia(ultima)) / 86400000),
+    promedioDias: dias.length > 1 ? Math.round(((msDia(ultima) - msDia(primera)) / 86400000 / (dias.length - 1)) * 10) / 10 : null,
+    ultimos30: dias.filter((d) => hoy - msDia(d) < 30 * 86400000).length,
+    soloClub: dias.filter((d) => [...porDia.get(d)!].every((o) => o === "club")).length,
+  };
+}
+
+/** Frase corta para la ficha del cliente. */
+export function textoVisitas(r: ResumenVisitas): string {
+  if (!r.visitas) return "Todavía no tiene visitas registradas.";
+  const f = (d: string) => d.split("-").reverse().join("/");
+  const ult = r.diasDesdeUltima === 0 ? "hoy" : r.diasDesdeUltima === 1 ? "ayer" : `hace ${r.diasDesdeUltima} días`;
+  const partes = [`${r.visitas} visita${r.visitas === 1 ? "" : "s"} (primera el ${f(r.primera!)})`, `última ${ult}`];
+  if (r.promedioDias !== null) partes.push(`viene cada ${r.promedioDias} días en promedio`);
+  partes.push(`${r.ultimos30} en los últimos 30 días`);
+  return partes.join(" · ") + ".";
 }

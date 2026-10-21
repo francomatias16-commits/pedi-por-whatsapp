@@ -41,7 +41,7 @@ ok("0041 solo el dueño", m.includes("es_dueno(p_kiosco)") && m.includes("no_aut
 ok("0041 sin acceso anónimo", m.includes("from public, anon") && m.includes("to authenticated"));
 ok("0041 sin DROP", !/\bdrop\b/i.test(m.replace(/--.*$/gm, "")));
 const p = leer("../components/Sellos.tsx");
-ok("panel con pestaña Por empleado", p.includes("ReporteEmpleados") && p.includes('"equipo"'));
+ok("panel con pestaña Por empleado", p.includes("<ReporteEmpleados") && p.includes("Sellos por empleado"));
 ok("reporte llama a la función", leer("../components/sellos/ReporteEmpleados.tsx").includes('rpc("sellos_por_empleado"'));
 
 if (fallos) { console.log(fallos, "fallos"); process.exit(1); }

@@ -26,9 +26,9 @@ for (const r of N.ROLES) eq(`la pantalla de entrada de ${r} es visible para ${r}
 // ---- Destinos filtrados
 eq("cajero: destinos", N.destinosPara("cajero").map((d) => d.id), ["vender", "pedidos", "clientes"]);
 eq("cajero: clientes solo trae Fiado", N.destinosPara("cajero").find((d) => d.id === "clientes").subs.map((s) => s.tab), ["fiado"]);
-eq("encargado: 7 destinos", N.destinosPara("encargado").length, 7);
-eq("dueño: 7 destinos", N.destinosPara("dueno").length, 7);
-eq("destinosPara no modifica la lista original", N.DESTINOS.find((d) => d.id === "clientes").subs.length, 3);
+eq("encargado: 8 destinos", N.destinosPara("encargado").length, 8);
+eq("dueño: 8 destinos", N.destinosPara("dueno").length, 8);
+eq("destinosPara no modifica la lista original", N.DESTINOS.find((d) => d.id === "clientes").subs.length, 2);
 for (const r of N.ROLES) for (const d of N.destinosPara(r)) eq(`${r}/${d.id}: la primera pantalla es visible`, N.puedeVer(r, d.subs[0].tab), true);
 
 // ---- Permisos finos

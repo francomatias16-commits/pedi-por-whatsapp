@@ -8,7 +8,7 @@ import Cuenta from "./Insignias";
 import InstalarApp from "./InstalarApp";
 
 const PRINCIPALES: Destino[] = ["inicio", "vender", "pedidos", "productos"];
-const EN_MAS: Destino[] = ["clientes", "compras", "negocio"];
+const EN_MAS: Destino[] = ["clientes", "puntos", "compras", "negocio"];
 const info = (id: Destino) => DESTINOS.find((d) => d.id === id)!;
 
 // Menú del celular: 4 botones grandes abajo + "Más". Es una barra fija: se alcanza con el pulgar.

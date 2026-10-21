@@ -6,7 +6,7 @@ export type Modo = "simple" | "completo";
 const CLAVE = "pdw-modo";
 
 // Pantallas que el modo simple oculta en las pestañas. Siguen existiendo por link.
-export const AVANZADOS: Tab[] = ["radar", "conteo", "etiquetas", "proveedores", "sellos"];
+export const AVANZADOS: Tab[] = ["radar", "conteo", "etiquetas", "proveedores"];
 
 export function leerModo(): Modo {
   try { return localStorage.getItem(CLAVE) === "completo" ? "completo" : "simple"; } catch { return "simple"; }

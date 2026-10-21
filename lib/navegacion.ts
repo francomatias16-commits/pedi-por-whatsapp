@@ -1,7 +1,7 @@
-// Mapa de navegación del panel: 7 destinos con sus pantallas, y las rutas (/panel/productos/precios).
+// Mapa de navegación del panel: 8 destinos con sus pantallas, y las rutas (/panel/productos/precios).
 // Es lógica pura (sin React) para poder probarla con `npm test`.
 export type Tab = "pedidos" | "productos" | "fiado" | "caja" | "sellos" | "precios" | "proveedores" | "reponer" | "conteo" | "etiquetas" | "resumen" | "radar" | "local";
-export type Destino = "inicio" | "vender" | "pedidos" | "productos" | "clientes" | "compras" | "negocio";
+export type Destino = "inicio" | "vender" | "pedidos" | "productos" | "clientes" | "puntos" | "compras" | "negocio";
 export type Sub = { tab: Tab; slug: string; titulo: string };
 export type DestinoInfo = { id: Destino; titulo: string; detalle: string; subs: Sub[] };
 
@@ -15,8 +15,9 @@ export const DESTINOS: DestinoInfo[] = [
     { tab: "etiquetas", slug: "carteles", titulo: "Carteles de precio" }, { tab: "conteo", slug: "contar", titulo: "Contar mercadería" },
   ] },
   { id: "clientes", titulo: "Clientes", detalle: "Quién te compra y quién te debe", subs: [
-    { tab: "fiado", slug: "", titulo: "Fiado" }, { tab: "sellos", slug: "puntos", titulo: "Puntos" }, { tab: "radar", slug: "alertas", titulo: "Alertas" },
+    { tab: "fiado", slug: "", titulo: "Fiado" }, { tab: "radar", slug: "alertas", titulo: "Alertas" },
   ] },
+  { id: "puntos", titulo: "Puntos", detalle: "Premios para que vuelvan", subs: [{ tab: "sellos", slug: "", titulo: "Puntos y premios" }] },
   { id: "compras", titulo: "Compras", detalle: "Qué te falta y a quién comprarle", subs: [
     { tab: "reponer", slug: "", titulo: "Qué comprar" }, { tab: "proveedores", slug: "proveedores", titulo: "Proveedores" },
   ] },
@@ -36,6 +37,8 @@ export function rutaDeTab(t: Tab): string {
 // Un slug desconocido dentro de un destino válido abre la primera pantalla de ese destino.
 export function tabDeRuta(segmentos: string[]): Tab | null {
   if (segmentos.length === 0) return "resumen";
+  // Puntos vivía dentro de Clientes: los links viejos (/panel/clientes/puntos, avisos ya enviados) siguen funcionando.
+  if (segmentos[0] === "clientes" && segmentos[1] === "puntos") return "sellos";
   const d = DESTINOS.find((x) => x.id === segmentos[0]);
   if (!d || d.id === "inicio") return null;
   return (d.subs.find((s) => s.slug === (segmentos[1] ?? "")) ?? d.subs[0]).tab;

@@ -10,7 +10,7 @@ export const GUIAS: Record<Tab, { titulo: string; texto: string }> = {
   etiquetas: { titulo: "Carteles de precio", texto: "Elegí los productos y generá carteles para imprimir y poner en el estante." },
   conteo: { titulo: "Contar mercadería", texto: "Contá lo que hay en el estante y guardá lo contado. Las ventas siguen mientras contás." },
   fiado: { titulo: "Quién me debe", texto: "Acá ves lo que te deben tus clientes. Para anotar algo nuevo, tocá el nombre y poné el monto." },
-  sellos: { titulo: "Puntos y premios", texto: "Armá cómo tus clientes juntan puntos y qué premio se llevan. El asistente de 3 pasos te guía." },
+  sellos: { titulo: "Puntos y premios", texto: "Hoy: los sellos que sumaron tus clientes y los premios para entregar. Mi programa: el premio, cómo se suman los puntos y el QR del mostrador. Promociones: ofertas y sorteos (opcional). El asistente de 3 pasos te guía." },
   radar: { titulo: "Alertas del negocio", texto: "Acá aparecen clientes que dejaron de venir y mercadería que vence. Tocá una alerta para actuar." },
   reponer: { titulo: "Qué comprar", texto: "Lo que se acabó o queda poco, con cuánto pedir a cada proveedor. Tocá Pedir por WhatsApp." },
   proveedores: { titulo: "Proveedores", texto: "Cargá a tus proveedores con su WhatsApp y registrá las compras que hacés." },

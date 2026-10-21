@@ -22,7 +22,7 @@ eq("clave local", C.claveTokenLocal("donjulio"), "gf-club-donjulio");
 const av = C.armarAvisoClub({ cliente: "Marta", cantidad: 1, nuevo: false }, new Date("2026-10-19T17:32:00Z"));
 eq("aviso título", av.title, "Marta sumó un sello");
 ok("aviso con hora argentina (14:32)", av.body.startsWith("14:32"));
-eq("aviso url y tag", [av.url, av.tag], ["/panel/clientes/puntos", "club"]);
+eq("aviso url y tag", [av.url, av.tag], ["/panel/puntos", "club"]);
 eq("aviso plural", C.armarAvisoClub({ cliente: "Ana", cantidad: 3, nuevo: false }).title, "Ana sumó 3 sellos");
 eq("aviso cliente nuevo", C.armarAvisoClub({ cliente: "Luis", cantidad: 1, nuevo: true }).title, "Luis se sumó al club");
 
@@ -72,7 +72,7 @@ for (const r of ["../app/api/club/sumar/route.ts", "../app/api/club/unirse/route
 ok("la ruta de sumar valida el token", leer("../app/api/club/sumar/route.ts").includes("CLUB_TOKEN_RE"));
 ok("el cliente no recibe el aviso interno", leer("../app/api/club/_comun.ts").includes("sinAviso") && leer("../app/api/club/sumar/route.ts").includes("sinAviso(") && leer("../app/api/club/unirse/route.ts").includes("sinAviso("));
 ok("la tarjeta tiene manifest propio", leer("../app/tarjeta/[token]/page.tsx").includes("manifest.webmanifest"));
-ok("el panel muestra la pestaña Club", leer("../components/Sellos.tsx").includes('["club", "Club"]'));
+ok("el panel muestra la pestaña Hoy del club", leer("../components/Sellos.tsx").includes('["hoy", "Hoy"]') && leer("../components/Sellos.tsx").includes("<SellosHoy"));
 ok("el service worker respeta el tag", leer("../public/sw.js").includes("datos.tag"));
 ok("anon lee las columnas del club solo por funciones", !/grant select[^;]*club_/.test(mig));
 
@@ -81,7 +81,7 @@ eq("mensaje premio listo", C.mensajePremioListo("Marta Gómez", "Kiosco Sol", "G
 eq("mensaje premio listo sin nombre", C.mensajePremioListo(" ", "Sol", "Café").startsWith("¡Hola! Completaste"), true);
 eq("completas: solo las que llegan a la meta, más sellos primero", C.conPremioListo([{ nombre: "B", sellos_disponibles: 10 }, { nombre: "A", sellos_disponibles: 12 }, { nombre: "C", sellos_disponibles: 9 }, { nombre: "D", sellos_disponibles: 10 }], 10).map((c) => c.nombre), ["A", "B", "D"]);
 eq("completas: sin premio no hay lista", C.conPremioListo([{ nombre: "A", sellos_disponibles: 50 }], null), []);
-ok("el panel del club muestra las tarjetas completas", leer("../components/sellos/Club.tsx").includes("<PremiosListos"));
+ok("el panel del club muestra las tarjetas completas", leer("../components/sellos/Club.tsx").includes("<PremiosListos") && leer("../components/Sellos.tsx").includes("<SellosHoy"));
 
 // instalar la tarjeta como app
 ok("la tarjeta del cliente ofrece instalar la app", leer("../components/ClubTarjeta.tsx").includes("<InstalarApp"));
@@ -131,11 +131,32 @@ ok("la migración 0044 cierra el acceso directo a los papelitos", leer("../supab
 
 // Panel del talonario (0044): prender el papelito, generar, imprimir.
 const pap = leer("../components/sellos/PapelitosClub.tsx");
-ok("el panel incluye el talonario en Puntos → Club", leer("../components/sellos/Club.tsx").includes("<PapelitosClub kiosco={kiosco} />"));
+ok("el panel incluye el talonario en Puntos → Mi programa", leer("../components/Sellos.tsx").includes("<PapelitosClub kiosco={kiosco} />"));
 ok("el panel prende y apaga el papelito con la función del dueño", pap.includes('rpc("club_configurar_codigos"'));
 ok("el panel genera con la función del lote y valida 1..200", pap.includes('rpc("club_generar_codigos"') && pap.includes("n > 200"));
 ok("el panel imprime solo lo que hace falta (sin usar)", pap.includes('rpc("club_codigos_sin_usar"') && pap.includes("window.print()"));
 ok("el tope por local está en la migración", leer("../supabase/migrations/0044_club_talonario.sql").includes("v_fallos_local >= 50"));
+
+// Visitas por cliente: un día con sello válido = una visita; anulados y ajustes manuales no cuentan.
+{
+  const S = (f, o = "club", c = 1, a = false) => ({ created_at: f, origen: o, cantidad: c, anulado: a });
+  const ahora = new Date("2026-10-21T15:00:00Z");
+  const r = C.resumenVisitas([
+    S("2026-10-01T15:00:00Z", "venta"), S("2026-10-01T20:00:00Z", "club"), // mismo día: 1 visita
+    S("2026-10-11T15:00:00Z", "club"), S("2026-10-20T15:00:00Z", "venta"),
+    S("2026-10-15T15:00:00Z", "club", 1, true), S("2026-10-16T15:00:00Z", "manual", 5), S("2026-10-17T15:00:00Z", "club", -1),
+  ], ahora);
+  eq("visitas: cuenta días, no sellos", r.visitas, 3);
+  eq("visitas: primera y última", [r.primera, r.ultima], ["2026-10-01", "2026-10-20"]);
+  eq("visitas: días desde la última", r.diasDesdeUltima, 1);
+  eq("visitas: promedio entre visitas", r.promedioDias, 9.5);
+  eq("visitas: últimos 30 días", r.ultimos30, 3);
+  eq("visitas: solo por toque del club", r.soloClub, 1);
+  eq("visitas: sin sellos", C.resumenVisitas([], ahora).visitas, 0);
+  eq("visitas: medianoche argentina (02:30 UTC = día anterior)", C.resumenVisitas([S("2026-10-20T02:30:00Z", "venta")], ahora).primera, "2026-10-19");
+  ok("visitas: texto", C.textoVisitas(r).includes("3 visitas") && C.textoVisitas(r).includes("última ayer"));
+  ok("el panel muestra las visitas del cliente", leer("../components/sellos/ClientesSellos.tsx").includes("textoVisitas(rv)"));
+}
 
 if (fallos) { console.log(`✗ ${fallos} fallo(s)`); process.exit(1); }
 console.log("club OK");
