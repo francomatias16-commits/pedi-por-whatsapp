@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { fechaCorta } from "@/lib/vencimiento";
 import { supabase, type Kiosco } from "@/lib/supabase";
 import { cantidadTexto, fecha, mensajeError, type PosConfig } from "@/lib/caja";
 import { cargarVentaCompleta } from "@/lib/pos/venta-remota";
@@ -22,6 +23,14 @@ export default function BuscarVentas({ kiosco, config, turnoAbierto, onCambio }:
   const [devolviendo, setDevolviendo] = useState<Res | null>(null);
   const [ticket, setTicket] = useState<TicketData | null>(null);
   const [recarga, setRecarga] = useState(0);
+  // Lote (vencimiento) del que salió cada ítem; se pide al abrir la venta, solo si el dueño cargó lotes.
+  const [lotes, setLotes] = useState<Record<string, { item_id: string; vence: string; cantidad: number }[]>>({});
+  async function cargarLotes(ventaId: string) {
+    if (lotes[ventaId]) return;
+    const { data, error } = await supabase.rpc("pos_lotes_de_venta", { p_venta: ventaId });
+    // Dato extra: si falla, el historial se ve igual.
+    setLotes((m) => ({ ...m, [ventaId]: error ? [] : ((data ?? []) as { item_id: string; vence: string; cantidad: number }[]).map((x) => ({ ...x, cantidad: Number(x.cantidad) })) }));
+  }
 
   useEffect(() => {
     let vivo = true;
@@ -64,7 +73,7 @@ export default function BuscarVentas({ kiosco, config, turnoAbierto, onCambio }:
       {res.map((r) => {
         const dev = r.items.some((i) => i.devuelto > 0);
         return (
-          <details className={`card venta${r.anulada ? " anulada" : ""}`} key={r.id}>
+          <details className={`card venta${r.anulada ? " anulada" : ""}`} key={r.id} onToggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open) void cargarLotes(r.id); }}>
             <summary className="row">
               <span><b className="mono">#{r.numero}</b> <span className="mut">{fecha(r.created_at)}{r.cliente_nombre ? ` · ${r.cliente_nombre}` : ""}</span>
                 {r.anulada && <span className="chip-estado">Anulada</span>}{dev && !r.anulada && <span className="chip-estado">Con devoluciones</span>}</span>
@@ -73,7 +82,8 @@ export default function BuscarVentas({ kiosco, config, turnoAbierto, onCambio }:
             <div className="recibo">
               {r.items.map((i) => (
                 <div className="row" key={i.id}>
-                  <span>{cantidadTexto(i.cantidad, i.por_peso)} × {i.nombre}{i.devuelto > 0 && <span className="mut"> (devuelto {cantidadTexto(i.devuelto, i.por_peso)})</span>}</span>
+                  <span>{cantidadTexto(i.cantidad, i.por_peso)} × {i.nombre}{i.devuelto > 0 && <span className="mut"> (devuelto {cantidadTexto(i.devuelto, i.por_peso)})</span>}
+                    {(lotes[r.id] ?? []).filter((l) => l.item_id === i.id).map((l) => <span className="mut" key={l.vence}> · lote que vence {fechaCorta(l.vence)}{l.cantidad !== i.cantidad ? ` (${l.cantidad})` : ""}</span>)}</span>
                   <span className="mono">{peso(i.neto)}</span>
                 </div>
               ))}

@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { mensajeErrorSql } from "@/lib/errores";
 import { supabase, type Kiosco, type Producto } from "@/lib/supabase";
 import { aportarAGlobal, buscarPorBarcode, esCodigoValido } from "@/lib/barcode";
 import { peso } from "@/lib/whatsapp";
@@ -159,8 +160,15 @@ export default function Productos({ kiosco }: { kiosco: Kiosco }) {
     if (ed.controla && (isNaN(mini) || mini < 0 || (obj !== null && (isNaN(obj) || obj < 0)))) { setAviso("El stock mínimo y el objetivo tienen que ser números iguales o mayores a cero."); return; }
     if (ed.controla && (isNaN(ent) || ent < 0 || ent > 60)) { setAviso("Los días de entrega van de 0 a 60."); return; }
     if (ed.peso && !!p.vendido_por_peso !== ed.peso && p.stock_controlado && !(await confirmar({ titulo: "¿Cambiar a venta por peso?", detalle: "Al pasar a venta por peso el stock se cuenta en GRAMOS. ¿Ya cargaste el stock en gramos?", confirmar: "Sí, ya está en gramos", peligro: false }))) return;
-    const { error } = await supabase.from("productos").update({ nombre: n, categoria: capitalizar(ed.cat) || "General", precio: pr, stock_controlado: ed.controla, vendido_por_peso: ed.peso, plu: plu || null, permite_sin_stock: ed.sinStock, ...(ed.controla ? { stock: st, disponible: st > 0 ? true : p.disponible, stock_minimo: mini, stock_objetivo: obj, lead_time_dias: ent, proveedor_id: ed.prov || null } : {}) }).eq("id", p.id);
+    // Si el producto ya controlaba stock, el cambio de cantidad va por ajustar_stock: deja historial, motivo y reporte de mermas.
+    // Solo cuando recién se activa el control (stock inicial) se escribe directo.
+    const ajusteConHistorial = ed.controla && !!p.stock_controlado && st !== Number(p.stock ?? 0);
+    const { error } = await supabase.from("productos").update({ nombre: n, categoria: capitalizar(ed.cat) || "General", precio: pr, stock_controlado: ed.controla, vendido_por_peso: ed.peso, plu: plu || null, permite_sin_stock: ed.sinStock, ...(ed.controla ? { ...(ajusteConHistorial ? {} : { stock: st }), disponible: st > 0 ? true : p.disponible, stock_minimo: mini, stock_objetivo: obj, lead_time_dias: ent, proveedor_id: ed.prov || null } : {}) }).eq("id", p.id);
     if (error) { setAviso("No se pudo guardar el cambio."); return; }
+    if (ajusteConHistorial) {
+      const r = await supabase.rpc("ajustar_stock", { p_producto: p.id, p_nuevo: st, p_motivo: "Corrección desde Productos", p_tipo: "manual" });
+      if (r.error) { setAviso("Se guardó el producto, pero no se pudo ajustar el stock: " + mensajeErrorSql(r.error.message)); cargar(); return; }
+    }
     setEditId(null); setAviso(`Actualizado. ${n}`); cargar();
   }
   async function eliminar(p: Producto) {

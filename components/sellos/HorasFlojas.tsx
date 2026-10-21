@@ -53,7 +53,7 @@ export default function HorasFlojas({ kiosco, campanas, onCambio }: { kiosco: Ki
       <h3>Promo de horas flojas</h3>
       <p className="mut" style={{ marginTop: 0 }}>Sellos dobles en los días y horarios en que vendés menos: llena los huecos sin tocar nada en la caja.</p>
       {promo && <p><b>{promo.activa ? "Activa" : "Pausada"}:</b> {describirCampana(promo)}</p>}
-      {!hayBaseDeSellos(campanas) && <p className="mut" role="alert">Para que funcione necesitás tener activa una forma de sumar por compra (“Mi programa”, paso 2): los sellos dobles multiplican lo que ya se da.</p>}
+      {!hayBaseDeSellos(campanas) && <p className="mut" role="alert">Para que funcione necesitás tener activa una forma de sumar por compra (pestaña “Cómo se suman”): los sellos dobles multiplican lo que ya se da.</p>}
       <div className="row" style={{ justifyContent: "flex-start", gap: 6, flexWrap: "wrap" }}>
         {PRESETS_HORAS_FLOJAS.map((p) => <button key={p.titulo} type="button" className="sec" onClick={() => setH(p.form)}>{p.titulo}</button>)}
       </div>

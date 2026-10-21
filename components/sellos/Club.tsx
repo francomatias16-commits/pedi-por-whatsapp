@@ -2,10 +2,14 @@
 import { useCallback, useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { supabase, type Kiosco } from "@/lib/supabase";
-import { ajustesDesdeForm, esMedioDigital, linkClub, nombreMedio, type ActividadClub } from "@/lib/club";
+import { ajustesDesdeForm, esMedioDigital, linkClub, nombreMedio, resumenLimites, type ActividadClub } from "@/lib/club";
 import { mensajeErrorSql } from "@/lib/errores";
-import { vistaPreviaMeta, type Premio } from "@/lib/fidelidad";
+import { vistaPreviaMeta, type Campana, type Premio } from "@/lib/fidelidad";
+import HorasFlojas from "./HorasFlojas";
 import PremiosListos from "./PremiosListos";
+import PapelitosClub from "./PapelitosClub";
+import Rentabilidad from "./Rentabilidad";
+import Avisos from "@/components/Avisos";
 
 const hora = (s: string) => new Date(s).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Argentina/Buenos_Aires" });
 const REFRESCO_MS = 20000;
@@ -47,13 +51,26 @@ async function descargarCartel(kiosco: Kiosco, url: string, premio: Premio | nul
   }, "image/png");
 }
 
-export const premioPrincipal = (premios: Premio[]): Premio | null => [...premios].filter((p) => p.activo).sort((a, b) => a.costo_sellos - b.costo_sellos)[0] ?? null;
-
-/** Pestaña "Hoy": lo que pasó en las últimas 24 horas y los clientes que ya pueden retirar su premio. */
-export function SellosHoy({ kiosco, premios }: { kiosco: Kiosco; premios: Premio[] }) {
+export default function Club({ kiosco, premios, campanas, onCambio }: { kiosco: Kiosco; premios: Premio[]; campanas: Campana[]; onCambio: () => void }) {
   const [act, setAct] = useState<ActividadClub[] | null>(null);
   const [msg, setMsg] = useState("");
-  const principal = premioPrincipal(premios);
+  const [png, setPng] = useState("");
+  const [copiado, setCopiado] = useState(false);
+  const url = typeof window !== "undefined" ? linkClub(kiosco.slug, location.origin) : "";
+
+  const principal = [...premios].filter((p) => p.activo).sort((a, b) => a.costo_sellos - b.costo_sellos)[0] ?? null;
+  const [pNombre, setPNombre] = useState(principal?.nombre ?? "");
+  const [pCosto, setPCosto] = useState(String(principal?.costo_sellos ?? 10));
+  useEffect(() => { setPNombre(principal?.nombre ?? ""); setPCosto(String(principal?.costo_sellos ?? 10)); }, [principal?.id, principal?.nombre, principal?.costo_sellos]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const [aj, setAj] = useState({
+    activo: kiosco.club_activo ?? true,
+    maxDia: kiosco.club_max_por_dia === undefined ? "1" : kiosco.club_max_por_dia === null ? "" : String(kiosco.club_max_por_dia),
+    espera: kiosco.club_espera_min ? String(kiosco.club_espera_min) : "",
+    horario: !!(kiosco.club_hora_desde && kiosco.club_hora_hasta),
+    desde: kiosco.club_hora_desde?.slice(0, 5) ?? "08:00", hasta: kiosco.club_hora_hasta?.slice(0, 5) ?? "22:00",
+  });
+  const [guardado, setGuardado] = useState(() => ajustesDesdeForm(aj));
 
   const cargar = useCallback(async () => {
     const { data, error } = await supabase.rpc("club_actividad", { p_kiosco: kiosco.id, p_horas: 24 });
@@ -64,6 +81,7 @@ export function SellosHoy({ kiosco, premios }: { kiosco: Kiosco; premios: Premio
     const t = setInterval(() => { if (document.visibilityState === "visible") void cargar(); }, REFRESCO_MS);
     return () => clearInterval(t);
   }, [cargar]);
+  useEffect(() => { if (url) QRCode.toDataURL(url, { width: 512, margin: 1, errorCorrectionLevel: "M" }).then(setPng); }, [url]);
 
   async function rechazar(e: ActividadClub, rechazar: boolean) {
     setMsg("");
@@ -84,16 +102,40 @@ export function SellosHoy({ kiosco, premios }: { kiosco: Kiosco; premios: Premio
     await cargar();
   }
 
+  const meta = vistaPreviaMeta(pNombre, pCosto);
+
+  async function guardarPremio() {
+    setMsg("");
+    const costo = Number(pCosto), nombre = pNombre.trim();
+    if (!nombre || nombre.length > 80) return setMsg("Escribí el premio (hasta 80 letras).");
+    if (!Number.isInteger(costo) || costo < 1 || costo > 1000) return setMsg("Los sellos para el premio tienen que ser un número entero entre 1 y 1000.");
+    const { error } = principal
+      ? await supabase.from("fidelidad_premios").update({ nombre, costo_sellos: costo }).eq("id", principal.id)
+      : await supabase.from("fidelidad_premios").insert({ kiosco_id: kiosco.id, nombre, costo_sellos: costo, tipo: "libre" });
+    if (error) return setMsg("No se pudo guardar el premio.");
+    setMsg("Premio guardado"); onCambio();
+  }
+
+  async function guardarLimites() {
+    setMsg("");
+    const r = ajustesDesdeForm(aj);
+    if (!r.ok) return setMsg(r.error);
+    const { error } = await supabase.from("kioscos").update(r.datos).eq("id", kiosco.id);
+    if (error) return setMsg("No se pudieron guardar los límites.");
+    setGuardado(r); setMsg("Límites guardados");
+  }
+
+  async function copiar() { try { await navigator.clipboard.writeText(url); setCopiado(true); setTimeout(() => setCopiado(false), 2500); } catch { setCopiado(false); } }
+
   const hoy = (act ?? []).filter((e) => !e.rechazado);
   const porVerificar = hoy.filter((e) => esMedioDigital(e.medio) && e.verificado === false).length;
   return (
     <>
-      <PremiosListos kiosco={kiosco} premio={principal} />
       <div className="card">
         <h3>Sellos de las últimas 24 horas</h3>
         <p className="mut" style={{ marginTop: 0 }}>Cada sello nuevo te llega como aviso: rechazalo si el cliente no compró y confirmá los de transferencia o Mercado Pago.</p>
         {act === null && <p className="mut">Cargando…</p>}
-        {act && act.length === 0 && <p className="mut">Todavía nadie sumó. Descargá el cartel con el QR en “Mi programa” y pegalo en el mostrador.</p>}
+        {act && act.length === 0 && <p className="mut">Todavía nadie sumó. Pegá el cartel con el QR en el mostrador (más abajo) para empezar.</p>}
         {act && act.length > 0 && <p className="mut">{hoy.length} sello{hoy.length === 1 ? "" : "s"} válido{hoy.length === 1 ? "" : "s"}{porVerificar > 0 ? ` · ${porVerificar} por verificar con comprobante` : ""}.</p>}
         {(act ?? []).map((e) => (
           <div className="row fila-sep" key={e.evento}>
@@ -110,110 +152,67 @@ export function SellosHoy({ kiosco, premios }: { kiosco: Kiosco; premios: Premio
         ))}
       </div>
       {msg && <p role="status" className="mut">{msg}</p>}
-    </>
-  );
-}
 
-/** Paso 1 de "Mi programa": el premio principal y cada cuántos sellos se gana. */
-export function PremioPrincipal({ kiosco, premios, onCambio }: { kiosco: Kiosco; premios: Premio[]; onCambio: () => void }) {
-  const [msg, setMsg] = useState("");
-  const principal = premioPrincipal(premios);
-  const [pNombre, setPNombre] = useState(principal?.nombre ?? "");
-  const [pCosto, setPCosto] = useState(String(principal?.costo_sellos ?? 10));
-  useEffect(() => { setPNombre(principal?.nombre ?? ""); setPCosto(String(principal?.costo_sellos ?? 10)); }, [principal?.id, principal?.nombre, principal?.costo_sellos]); // eslint-disable-line react-hooks/exhaustive-deps
-  const meta = vistaPreviaMeta(pNombre, pCosto);
+      <PremiosListos kiosco={kiosco} premio={principal} />
 
-  async function guardarPremio() {
-    setMsg("");
-    const costo = Number(pCosto), nombre = pNombre.trim();
-    if (!nombre || nombre.length > 80) return setMsg("Escribí el premio (hasta 80 letras).");
-    if (!Number.isInteger(costo) || costo < 1 || costo > 1000) return setMsg("Los sellos para el premio tienen que ser un número entero entre 1 y 1000.");
-    const { error } = principal
-      ? await supabase.from("fidelidad_premios").update({ nombre, costo_sellos: costo }).eq("id", principal.id)
-      : await supabase.from("fidelidad_premios").insert({ kiosco_id: kiosco.id, nombre, costo_sellos: costo, tipo: "libre" });
-    if (error) return setMsg("No se pudo guardar el premio.");
-    setMsg("Premio guardado"); onCambio();
-  }
+      <PapelitosClub kiosco={kiosco} />
 
-  return (
-    <div className="card">
-      <label>Qué se llevan<input value={pNombre} maxLength={80} onChange={(e) => setPNombre(e.target.value)} placeholder="Ej: Gaseosa 500 ml" /></label>
-      <label>Cada cuántos sellos<input inputMode="numeric" value={pCosto} onChange={(e) => setPCosto(e.target.value)} /></label>
-      <div className="fila-sep" aria-live="polite">
-        <b>Así lo verá el cliente</b>
-        <p>{meta.texto}</p>
-        {meta.casilleros > 0 && <ol className="club-casilleros" aria-hidden="true">{Array.from({ length: meta.casilleros }, (_, i) => <li key={i} />)}</ol>}
+      <div className="card">
+        <h3>Tu premio</h3>
+        <label>Qué se llevan<input value={pNombre} maxLength={80} onChange={(e) => setPNombre(e.target.value)} placeholder="Ej: Gaseosa 500 ml" /></label>
+        <label>Cada cuántos sellos<input inputMode="numeric" value={pCosto} onChange={(e) => setPCosto(e.target.value)} /></label>
+        <div className="fila-sep" aria-live="polite">
+          <b>Así lo verá el cliente</b>
+          <p>{meta.texto}</p>
+          {meta.casilleros > 0 && <ol className="club-casilleros" aria-hidden="true">{Array.from({ length: meta.casilleros }, (_, i) => <li key={i} />)}</ol>}
+        </div>
+        <button type="button" onClick={guardarPremio}>Guardar premio</button>
+        <p className="mut">Cuando el cliente completa la tarjeta te muestra la pantalla y lo canjeás desde Clientes. Otros premios y reglas: pestañas “Cómo se suman” y “Premios”.</p>
       </div>
-      <button type="button" onClick={guardarPremio}>Guardar premio</button>
-      {msg && <p role="status" className="mut">{msg}</p>}
-    </div>
-  );
-}
 
-/** QR del mostrador y cartel para imprimir. */
-export function QrMostrador({ kiosco, premios }: { kiosco: Kiosco; premios: Premio[] }) {
-  const [png, setPng] = useState("");
-  const [copiado, setCopiado] = useState(false);
-  const url = typeof window !== "undefined" ? linkClub(kiosco.slug, location.origin) : "";
-  useEffect(() => { if (url) QRCode.toDataURL(url, { width: 512, margin: 1, errorCorrectionLevel: "M" }).then(setPng); }, [url]);
-  async function copiar() { try { await navigator.clipboard.writeText(url); setCopiado(true); setTimeout(() => setCopiado(false), 2500); } catch { setCopiado(false); } }
-  return (
-    <div className="card qr-card">
-      {png && <img src={png} alt={`QR del club de ${kiosco.nombre}`} width={96} height={96} />}
-      <div className="qr-datos">
-        <b>QR del mostrador</b>
-        <p className="mut" style={{ margin: ".15rem 0 .5rem" }}>El cliente lo escanea una sola vez y se crea su tarjeta.{kiosco.tienda_activa !== false ? " Desde su tarjeta también puede ver tu catálogo: es el mismo QR de tu tienda." : ""}</p>
-        <p className="mut qr-url">{url}</p>
-        <div className="qr-acciones">
-          <button type="button" onClick={() => descargarCartel(kiosco, url, premioPrincipal(premios))}>Descargar cartel</button>
-          <button type="button" className="sec" onClick={copiar}>{copiado ? "Link copiado" : "Copiar link"}</button>
+      <Rentabilidad kiosco={kiosco} onCambio={onCambio} />
+
+      <HorasFlojas kiosco={kiosco} campanas={campanas} onCambio={onCambio} />
+
+      <div className="card qr-card">
+        {png && <img src={png} alt={`QR del club de ${kiosco.nombre}`} width={96} height={96} />}
+        <div className="qr-datos">
+          <b>QR del mostrador</b>
+          <p className="mut" style={{ margin: ".15rem 0 .5rem" }}>El cliente lo escanea una sola vez y se crea su tarjeta.{kiosco.tienda_activa !== false ? " Desde su tarjeta también puede ver tu catálogo: es el mismo QR de tu tienda." : ""}</p>
+          <p className="mut qr-url">{url}</p>
+          <div className="qr-acciones">
+            <button type="button" onClick={() => descargarCartel(kiosco, url, principal)}>Descargar cartel</button>
+            <button type="button" className="sec" onClick={copiar}>{copiado ? "Link copiado" : "Copiar link"}</button>
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
 
-/** Límites contra abusos y pausa del club. Sirve tal cual viene: 1 sello por día. */
-export function LimitesClub({ kiosco }: { kiosco: Kiosco }) {
-  const [msg, setMsg] = useState("");
-  const [aj, setAj] = useState({
-    activo: kiosco.club_activo ?? true,
-    maxDia: kiosco.club_max_por_dia === undefined ? "1" : kiosco.club_max_por_dia === null ? "" : String(kiosco.club_max_por_dia),
-    espera: kiosco.club_espera_min ? String(kiosco.club_espera_min) : "",
-    horario: !!(kiosco.club_hora_desde && kiosco.club_hora_hasta),
-    desde: kiosco.club_hora_desde?.slice(0, 5) ?? "08:00", hasta: kiosco.club_hora_hasta?.slice(0, 5) ?? "22:00",
-  });
-  async function guardarLimites() {
-    setMsg("");
-    const r = ajustesDesdeForm(aj);
-    if (!r.ok) return setMsg(r.error);
-    const { error } = await supabase.from("kioscos").update(r.datos).eq("id", kiosco.id);
-    if (error) return setMsg("No se pudieron guardar los límites.");
-    setMsg("Límites guardados");
-  }
-  return (
-    <>
-      <p className="mut" style={{ marginTop: 0 }}>Sirven para evitar abusos. Si no tocás nada, cada cliente puede sumar 1 sello por día.</p>
-      <label><input type="checkbox" checked={aj.activo} onChange={(e) => setAj({ ...aj, activo: e.target.checked })} /> Club activo (destildalo para pausar los sellos)</label>
-      <label>Sellos por día, como máximo
-        <select value={aj.maxDia} onChange={(e) => setAj({ ...aj, maxDia: e.target.value })}>
-          <option value="1">1 por día</option><option value="2">2 por día</option><option value="3">3 por día</option><option value="5">5 por día</option><option value="">Sin tope</option>
-        </select>
-      </label>
-      <label>Espera entre un sello y el siguiente
-        <select value={aj.espera} onChange={(e) => setAj({ ...aj, espera: e.target.value })}>
-          <option value="">Sin espera</option><option value="15">15 minutos</option><option value="30">30 minutos</option><option value="60">1 hora</option><option value="120">2 horas</option><option value="240">4 horas</option>
-        </select>
-      </label>
-      <label><input type="checkbox" checked={aj.horario} onChange={(e) => setAj({ ...aj, horario: e.target.checked })} /> Solo sumar en un horario</label>
-      {aj.horario && (
-        <div className="row" style={{ justifyContent: "flex-start", gap: 8 }}>
-          <label>Desde<input type="time" value={aj.desde} onChange={(e) => setAj({ ...aj, desde: e.target.value })} /></label>
-          <label>Hasta<input type="time" value={aj.hasta} onChange={(e) => setAj({ ...aj, hasta: e.target.value })} /></label>
-        </div>
-      )}
-      <button type="button" onClick={guardarLimites}>Guardar límites</button>
-      {msg && <p role="status" className="mut">{msg}</p>}
+      <Avisos kiosco={kiosco} />
+
+      <details className="card">
+        <summary><b>Límites (opcional)</b> · {resumenLimites(guardado.ok ? guardado.datos : { club_activo: true, club_max_por_dia: 1, club_espera_min: null, club_hora_desde: null, club_hora_hasta: null })}</summary>
+        <p className="mut">Sirven para evitar abusos. Si no tocás nada, cada cliente puede sumar 1 sello por día.</p>
+        <label><input type="checkbox" checked={aj.activo} onChange={(e) => setAj({ ...aj, activo: e.target.checked })} /> Club activo (destildalo para pausar los sellos)</label>
+        <label>Sellos por día, como máximo
+          <select value={aj.maxDia} onChange={(e) => setAj({ ...aj, maxDia: e.target.value })}>
+            <option value="1">1 por día</option><option value="2">2 por día</option><option value="3">3 por día</option><option value="5">5 por día</option><option value="">Sin tope</option>
+          </select>
+        </label>
+        <label>Espera entre un sello y el siguiente
+          <select value={aj.espera} onChange={(e) => setAj({ ...aj, espera: e.target.value })}>
+            <option value="">Sin espera</option><option value="15">15 minutos</option><option value="30">30 minutos</option><option value="60">1 hora</option><option value="120">2 horas</option><option value="240">4 horas</option>
+          </select>
+        </label>
+        <label><input type="checkbox" checked={aj.horario} onChange={(e) => setAj({ ...aj, horario: e.target.checked })} /> Solo sumar en un horario</label>
+        {aj.horario && (
+          <div className="row" style={{ justifyContent: "flex-start", gap: 8 }}>
+            <label>Desde<input type="time" value={aj.desde} onChange={(e) => setAj({ ...aj, desde: e.target.value })} /></label>
+            <label>Hasta<input type="time" value={aj.hasta} onChange={(e) => setAj({ ...aj, hasta: e.target.value })} /></label>
+          </div>
+        )}
+        <button type="button" onClick={guardarLimites}>Guardar límites</button>
+        <p className="mut">Otras reglas (sellos dobles, días, montos) están en “Cómo se suman” y también se aplican al club.</p>
+      </details>
     </>
   );
 }

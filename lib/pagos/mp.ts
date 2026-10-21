@@ -104,7 +104,7 @@ export const mpCrearCaja = (token: string, body: unknown, idempotencia: string) 
 
 export type OrdenMP = {
   id: string; status?: string; status_detail?: string; external_reference?: string | null; total_amount?: string | number;
-  transactions?: { payments?: { id?: string; amount?: string | number; status?: string }[] };
+  transactions?: { payments?: { id?: string; amount?: string | number; status?: string }[]; refunds?: { id?: string; amount?: string | number; status?: string }[] };
 };
 // La clave de idempotencia es el id del cobro: reintentar la misma creación no duplica la orden.
 export const mpCrearOrdenQR = (token: string, body: unknown, idempotencia: string) =>
@@ -113,3 +113,12 @@ export const mpOrden = (token: string, id: string) => mp<OrdenMP>(token, `/v1/or
 // Solo se cancela una orden en estado "created"; si ya se pagó, Mercado Pago la rechaza y el cobro se reconcilia como aprobado.
 export const mpCancelarOrdenQR = (token: string, id: string, idempotencia: string) =>
   mp<OrdenMP>(token, `/v1/orders/${encodeURIComponent(id)}/cancel`, { method: "POST", headers: { "X-Idempotency-Key": idempotencia } });
+// Reembolso de una orden QR ya pagada (Orders API). `cuerpo` vacío (null/undefined) reembolsa el total;
+// para uno parcial: { transactions: [{ id: <id del pago>, amount: "100.00" }] }.
+// La clave de idempotencia evita reembolsar dos veces si se reintenta.
+export const mpReembolsarOrden = (token: string, id: string, cuerpo: unknown, idempotencia: string) =>
+  mp<OrdenMP>(token, `/v1/orders/${encodeURIComponent(id)}/refund`, {
+    method: "POST",
+    headers: { "X-Idempotency-Key": idempotencia },
+    ...(cuerpo ? { body: JSON.stringify(cuerpo) } : {}),
+  });

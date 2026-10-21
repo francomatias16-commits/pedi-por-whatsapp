@@ -1,3 +1,5 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { withSentryConfig } from "@sentry/nextjs/config";
 
 /** @type {import('next').NextConfig} */
@@ -29,6 +31,8 @@ const cabeceras = [
 
 const config = {
   reactStrictMode: true,
+  // Raíz del proyecto fija: evita el aviso de "multiple lockfiles" si hay un package-lock.json en una carpeta superior.
+  outputFileTracingRoot: path.dirname(fileURLToPath(import.meta.url)),
   // pdfkit lee sus tipografías del disco: no se empaqueta (comprobante PDF de ARCA).
   serverExternalPackages: ["pdfkit"],
   // La app no usa next/image: se apaga el optimizador (/_next/image) para no exponer una superficie que no se necesita.

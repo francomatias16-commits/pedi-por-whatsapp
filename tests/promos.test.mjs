@@ -23,8 +23,8 @@ ok("todo semáforo tiene texto y color", ["conviene", "ajustado", "pierde_plata"
 eq("fase A disponible para activar", P.FASE_TEXTO.A, "Disponible para activar");
 eq("fase B y C próximamente", [P.FASE_TEXTO.B, P.FASE_TEXTO.C], ["Próximamente", "Próximamente"]);
 
-const club = leer("../components/sellos/Promociones.tsx");
-ok("el panel del club muestra la sección de promociones", club.includes("<Rentabilidad kiosco={kiosco} onCambio={onCambio} />") && club.includes('from "./Rentabilidad"') && leer("../components/Sellos.tsx").includes("<Promociones"));
+const club = leer("../components/sellos/Club.tsx");
+ok("el panel del club muestra la sección de promociones", club.includes("<Rentabilidad kiosco={kiosco} onCambio={onCambio} />") && club.includes('from "./Rentabilidad"'));
 ok("el panel pide las columnas de margen y tope", leer("../components/panel/PanelApp.tsx").includes("club_margen_minimo,club_tope_promos_pct"));
 ok("la rentabilidad se lee de la base, no se calcula en el navegador", leer("../components/sellos/Rentabilidad.tsx").includes('rpc("club_evaluar"'));
 
