@@ -9,3 +9,9 @@
 - Orden de aplicación en la base: 0061, 0062, 0063.
 
 - lib/pagos/mp.ts: se agrega `mpReembolsarOrden` (POST /v1/orders/{id}/refund; firma: token, id, cuerpo, idempotencia) y `refunds` en `OrdenMP`. Corrige el build de `qr/reembolsar/route.ts`.
+
+## Correcciones de CI (PR #18)
+- Se quitó `0061_reembolso_qr.sql` (copia vieja de `0064_reembolso_qr.sql`): dejaba dos migraciones 0061 y rompía `check:migraciones`.
+- `lib/errores.ts`: mensajes amigables para `cobro_no_reembolsable` y `reembolso_excede_cobro`.
+- 0065: `demo_proteger_tablas()` para que `venta_lotes_consumo` (0061) tenga el bloqueo de escritura de la demo.
+- Orden de aplicación en la base: 0061, 0062, 0063, 0064, 0065.

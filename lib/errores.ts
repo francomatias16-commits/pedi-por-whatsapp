@@ -108,6 +108,8 @@ export const ERRORES_SQL: ParError[] = [
   ["qr_ocupado", "Ya hay otro cobro con QR esperando el pago. Esperá que termine o cancelalo."],
   ["qr_sin_cobro", "Esa venta dice QR pero no hay un cobro aprobado por ese monto. Cobrá primero con \\\"Cobrar con QR\\\" o elegí otro medio."],
   ["cobro_no_encontrado", "No encontramos ese cobro."],
+  ["cobro_no_reembolsable", "Ese cobro con QR no se puede reembolsar: no está aprobado."],
+  ["reembolso_excede_cobro", "El reembolso supera lo que se cobró por QR."],
   ["token_protegido", "El link de seguimiento no se puede cambiar."],
   ["entrega_estado_invalido", "Solo se puede marcar listo o en camino un pedido confirmado: listo para retiros, en camino para envíos."],
   ["zona_requerida", "Elegí a qué zona va el envío."],
