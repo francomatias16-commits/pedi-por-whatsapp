@@ -1,4 +1,4 @@
--- 0061: reembolso de cobros QR a Mercado Pago desde la devolución de la caja.
+-- 0064: reembolso de cobros QR a Mercado Pago desde la devolución de la caja.
 -- Aditiva: sin DROP ni DELETE. Aplicar en el SQL Editor ANTES de subir el código.
 --
 -- Flujo: devolver_venta_mostrador registra la devolución en la caja; después el servidor
